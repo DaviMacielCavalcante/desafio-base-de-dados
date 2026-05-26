@@ -1,0 +1,11 @@
+name: desafio_bd
+version: 1.0.0
+profile: desafio_bd
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+
+models:
+  desafio_bd:
+    +materialized: view

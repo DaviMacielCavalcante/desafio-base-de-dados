@@ -1,0 +1,29 @@
+desafio_bd:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('DUCKDB_PATH_DEV') }}"
+      schema: "{{ env_var('DBT_DATASET_DEV') }}"
+      extensions:
+        - httpfs
+      settings:
+        s3_endpoint: "{{ env_var('MINIO_ENDPOINT') | replace('https://', '') | replace('http://', '')}}"
+        s3_access_key_id: "{{ env_var('MINIO_ROOT_USER')}}"
+        s3_secret_access_key: "{{ env_var('MINIO_ROOT_USER')}}"
+        s3_region: "us-east-1"
+        s3_use_ssl: false
+        s3_url_style: "path"
+    prod:
+      type: duckdb
+      path: "{{ env_var('DUCKDB_PATH_PROD') }}"
+      schema: "{{ env_var('DBT_DATASET_PROD') }}"
+      extensions:
+        - httpfs
+      settings:
+        s3_endpoint: "{{ env_var('MINIO_ENDPOINT') | replace('https://', '') | replace('http://', '')}}"
+        s3_access_key_id: "{{ env_var('MINIO_ROOT_USER')}}"
+        s3_secret_access_key: "{{ env_var('MINIO_ROOT_USER')}}"
+        s3_region: "us-east-1"
+        s3_use_ssl: false
+        s3_url_style: "path"
