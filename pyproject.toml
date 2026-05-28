@@ -5,9 +5,11 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "basedosdados>=2.0.3",
     "boto3>=1.43.14",
     "dbt-duckdb>=1.10.1",
     "duckdb>=1.5.3",
+    "polars>=1.41.1",
     "prefect>=3.7.2",
     "pyarrow>=24.0.0",
     "python-dotenv>=1.2.2",
@@ -17,6 +19,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "mypy>=1.19.1",
+    "pykernel>=0.1.6",
     "pytest>=9.0.3",
     "ruff>=0.15.14",
 ]

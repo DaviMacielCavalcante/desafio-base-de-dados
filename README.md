@@ -27,7 +27,6 @@ Tabela final: `br_mma_unidades_conservacao.unidade_conservacao`.
 ```bash
 cp .env.example .env
 make setup
-set -a && source .env && set +a   # exporta vars do .env pro processo (ver seção abaixo)
 make pipe
 ```
 
@@ -35,24 +34,24 @@ O comando `make setup` faz: sobe MinIO, instala deps Python, instala packages db
 
 Console do MinIO: http://localhost:9001 (login `minioadmin` / `minioadmin`).
 
-## Carregando variáveis de ambiente
+## Variáveis de ambiente
 
-Antes de rodar `dbt` ou outros comandos que dependem das variáveis do `.env`, exporte tudo para o processo:
+O `Makefile` carrega o `.env` automaticamente (via `-include .env` + `export` no topo) e exporta tudo pros subprocessos. Então qualquer comando via `make` (`make pipe`, `make dbt-seed`, `make dbt-build`, etc.) **já tem as env vars disponíveis** — não precisa de ritual antes.
+
+**Quando você precisa carregar manualmente:** apenas se invocar `dbt`, `uv run dbt …` ou qualquer ferramenta CLI **fora do `make`**, em uma sessão de terminal limpa. Nesses casos:
 
 ```bash
 set -a && source .env && set +a
 ```
 
-**O que cada parte faz:**
+**O que essa sequência faz:**
 - `set -a` — liga o modo *allexport*: toda variável atribuída a partir daqui vira env var do processo.
 - `source .env` — executa o `.env` (script `KEY=value`) no shell atual.
 - `set +a` — desliga o *allexport*. Higiene, evita poluir env de comandos posteriores.
 
-**Por que precisa?** O `dbt/profiles.yml` lê tudo via `{{ env_var('...') }}`. Quando você roda `uv run dbt …`, o `uv` cria um subprocesso, e subprocesso só herda **env vars** — não shell vars. Sem o `set -a`, o dbt estoura `Env var required but not provided`.
+**Por que precisa?** O `dbt/profiles.yml` lê tudo via `{{ env_var('...') }}`. Quando você roda `uv run dbt …` direto, o `uv` cria um subprocesso, e subprocesso só herda **env vars** — não shell vars. Sem o `set -a`, o dbt estoura `Env var required but not provided`.
 
-Comandos rodados por `make pipe` carregam o `.env` automaticamente via `python-dotenv` no código Python — só `dbt` CLI puro precisa do `source` manual.
-
-> **Alternativa:** [`direnv`](https://direnv.net) carrega o `.env` automaticamente ao entrar no diretório. Se você já usa, pode ignorar este passo.
+> **Alternativa:** [`direnv`](https://direnv.net) carrega o `.env` automaticamente ao entrar no diretório. Se você já usa, pode ignorar este passo até para invocações fora do `make`.
 
 ## Comandos
 
