@@ -1,5 +1,9 @@
-.PHONY: setup up down sync flow lint format dbt-deps dbt-build dbt-test clean help
+.PHONY: setup up down sync flow lint format dbt-deps dbt-seed dbt-build dbt-test clean help
 .DEFAULT_GOAL := help
+
+# Carrega .env se existir e exporta tudo pros subprocessos (dbt, uv, etc.)
+-include .env
+export
 
 # Flags padrão para o dbt neste projeto
 # Não faça "cd dbt" para rodar estes comandos.
@@ -16,7 +20,8 @@ help:
 	@echo "  lint        - ruff check + ruff format --check"
 	@echo "  format      - ruff format + ruff check --fix (escreve)"
 	@echo "  dbt-deps    - instala dbt packages"
-	@echo "  dbt-build   - dbt run + dbt test (target dev)"
+	@echo "  dbt-seed    - carrega seeds (dbt/seeds/*.csv) no warehouse (target dev)"
+	@echo "  dbt-build   - dbt seed + dbt run + dbt test (target dev)"
 	@echo "  dbt-test    - só dbt test (target dev)"
 	@echo "  clean       - remove data/*.duckdb e data/*.parquet (não mexe no MinIO)"
 
@@ -45,9 +50,13 @@ format:
 dbt-deps:
 	uv run dbt deps $(DBT_FLAGS)
 
-dbt-build: 
+dbt-seed:
+	uv run dbt seed --target dev $(DBT_FLAGS)
+
+dbt-build:
+	uv run dbt seed --target dev $(DBT_FLAGS)
 	uv run dbt run --target dev $(DBT_FLAGS)
-	uv run dbt test --target dev $(DBT_FLAGS)	
+	uv run dbt test --target dev $(DBT_FLAGS)
 
 dbt-test:
 	uv run dbt test --target dev $(DBT_FLAGS)
