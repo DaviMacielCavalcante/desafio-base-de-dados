@@ -1,0 +1,28 @@
+version: 2
+
+seeds:
+  - name: municipio
+    description: |
+      Diretório de municípios brasileiros com código IBGE de 7 dígitos.
+      Snapshot da tabela `br_bd_diretorios_brasil.municipio` da Base dos Dados,
+      reduzida a 3 colunas (`id_municipio`, `nome`, `sigla_uf`).
+      Atualizar manualmente quando o IBGE publicar nova divisão municipal.
+    config:
+      column_types:
+        id_municipio: varchar
+        nome: varchar
+        sigla_uf: varchar
+    columns:
+      - name: id_municipio
+        description: Código IBGE de 7 dígitos.
+        tests:
+          - unique
+          - not_null
+      - name: nome
+        description: Nome canônico do município (com acentos, caixa inicial maiúscula).
+        tests:
+          - not_null
+      - name: sigla_uf
+        description: Sigla da Unidade da Federação (2 letras maiúsculas).
+        tests:
+          - not_null
