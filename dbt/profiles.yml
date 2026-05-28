@@ -10,7 +10,7 @@ desafio_bd:
       settings:
         s3_endpoint: "{{ env_var('MINIO_ENDPOINT') | replace('https://', '') | replace('http://', '')}}"
         s3_access_key_id: "{{ env_var('MINIO_ROOT_USER')}}"
-        s3_secret_access_key: "{{ env_var('MINIO_ROOT_USER')}}"
+        s3_secret_access_key: "{{ env_var('MINIO_ROOT_PASSWORD')}}"
         s3_region: "us-east-1"
         s3_use_ssl: false
         s3_url_style: "path"
@@ -23,7 +23,7 @@ desafio_bd:
       settings:
         s3_endpoint: "{{ env_var('MINIO_ENDPOINT') | replace('https://', '') | replace('http://', '')}}"
         s3_access_key_id: "{{ env_var('MINIO_ROOT_USER')}}"
-        s3_secret_access_key: "{{ env_var('MINIO_ROOT_USER')}}"
+        s3_secret_access_key: "{{ env_var('MINIO_ROOT_PASSWORD')}}"
         s3_region: "us-east-1"
         s3_use_ssl: false
         s3_url_style: "path"
