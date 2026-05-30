@@ -62,7 +62,7 @@ Rode `make help` pra lista completa. Os mais usados:
 | `make setup` | Sobe MinIO + `uv sync` + `dbt deps` |
 | `make up` / `make down` | Liga/desliga MinIO |
 | `make pipe` | Roda o flow Prefect |
-| `make dbt-build` | `dbt run` + `dbt test` (target dev) |
+| `make dbt-build` | `dbt seed` + `dbt run` + `dbt test` (target dev) |
 | `make lint` / `make format` | Check / auto-fix com ruff |
 | `make clean` | Limpa `data/*.duckdb` e `data/*.parquet` |
 
@@ -76,6 +76,44 @@ MINIO_BUCKET_PROD=meu-bucket-prod
 ```
 
 Para usar **um MinIO/S3 remoto** (não o local), substitua `MINIO_ENDPOINT`, `MINIO_ROOT_USER` e `MINIO_ROOT_PASSWORD` pelas credenciais correspondentes.
+
+## Modelo de dados
+
+Segue o estilo da BD (tabela achatada + diretórios + dicionário — **não** Kimball
+fato/dimensão). O dataset `br_mma_unidades_conservacao` tem quatro tabelas:
+
+| Tabela | Granularidade | Papel |
+| --- | --- | --- |
+| `unidade_conservacao` | 1 linha por UC | tabela achatada da entidade; categóricas como colunas STRING |
+| `uc_municipio` | 1 linha por par `(id_uc, id_municipio)` | ponte n:n para o diretório de municípios |
+| `uc_bioma` | 1 linha por par `(id_uc, bioma)` | distribuição de área por bioma em formato **long** |
+| `municipio` (seed) | 1 linha por município | diretório IBGE (emula `br_bd_diretorios_brasil.municipio`) |
+| `dicionario` (seed) | 1 linha por `(coluna, chave)` | dicionário BD das colunas `indicador_*` (código → significado) |
+
+Pontos de modelagem (detalhados em [`docs/decisoes/`](docs/decisoes/)):
+
+- **Multi-municipalidade:** uma UC abrange vários municípios. Em vez de achatar
+  com `id_municipio` repetido, a UC guarda `municipios_abrangidos`
+  (`ARRAY[STRUCT(nome, sigla_uf, nome_norm)]`) e a ponte `uc_municipio` explode
+  isso via `UNNEST` + JOIN no diretório.
+- **`id_municipio` (IBGE 7 dígitos):** derivado por JOIN reproduzível em
+  `(nome_norm, sigla_uf)` — `nome_norm` pré-computado em Python (`unidecode`) de um
+  lado, `lower(strip_accents(...))` no SQL do outro. Sem lista manual de correção.
+- **UCs marinhas:** neste dataset todas trazem ≥1 município costeiro, então
+  aparecem na ponte normalmente (o `not_null`/`relationships` passa).
+- **Distribuição por bioma (long over wide):** a fonte traz 6 colunas
+  `area_<bioma>` (wide). Seguindo o princípio "long over wide" do manual BD, essas
+  colunas **saem** da tabela achatada e viram a `uc_bioma` (1 linha por UC×bioma
+  com área > 0), via `UNPIVOT`. Os agregados `area_soma_biomas` e
+  `area_soma_biomas_continental` permanecem na `unidade_conservacao`.
+
+### Testes dbt (gate)
+
+29 testes em [`schema.yml`](dbt/models/br_mma_unidades_conservacao/schema.yml) e nos
+seeds. Obrigatórios: `unique`/`not_null` em `id_uc`, `not_null`/`relationships` em
+`id_municipio`. Diferenciais: `accepted_values` (esfera, grupo, categoria IUCN,
+bioma), `accepted_range` (datas, proporção, áreas) e `unique_combination_of_columns`
+nas pontes — via `dbt_utils`.
 
 ## Decisões de arquitetura
 
@@ -112,12 +150,17 @@ docs/             # specs e plans dos sub-projetos
 
 ## Limitações conhecidas (estado atual)
 
-Este repo está em **sub-projeto #1 / 6** — apenas a infra está pronta. O que **ainda não existe**:
+Este repo está em **sub-projeto #4 / 6**. O que **já existe**:
 
-- [ ] Extração + tratamento + join IBGE (sub-projeto #2)
-- [ ] Upload e tabela externa em staging (sub-projeto #3)
-- [ ] Modelo dbt + testes obrigatórios (sub-projeto #4)
+- [x] Extração + tratamento + join IBGE (sub-projeto #2)
+- [x] Upload e tabela externa em staging (sub-projeto #3)
+- [x] Modelo dbt + testes obrigatórios + diferenciais do §4 (sub-projeto #4)
+
+O que **ainda não existe**:
+
 - [ ] Flow Prefect + gate dev→prod + schedule (sub-projeto #5)
 - [ ] CI, observabilidade, max_date metadata (sub-projeto #6)
 
-`make pipe` por enquanto só imprime `placeholder`.
+> `make pipe` hoje roda extract → transform → upload do parquet pro bucket dev,
+> mas **ainda não é um flow Prefect** nem invoca o dbt — isso é o sub-projeto #5.
+> A camada dbt roda via `make dbt-build` (seed + run + test, target dev).

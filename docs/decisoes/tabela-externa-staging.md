@@ -2,7 +2,7 @@
 
 **Data:** 2026-05-30
 **Sub-projeto afetado:** #4 (modelo dbt)
-**Status:** Decidido (com uma sub-decisão em aberto — ver §Sub-decisão)
+**Status:** Implementado — sub-decisões (bucket por `target.name`, `nome_norm` no SQL) resolvidas em 2026-05-30. Camada gold dbt construída e com 22 testes verdes.
 
 ---
 
@@ -100,7 +100,7 @@ idêntico ao da BD aceitando escrever macros DuckDB.
 
 ---
 
-## Sub-decisão (EM ABERTO): bucket dev vs prod no `external_location`
+## Sub-decisão (RESOLVIDA 2026-05-30): bucket dev vs prod no `external_location`
 
 O `external_location` é uma string, mas o bucket muda por ambiente
 (`MINIO_BUCKET_DEV` vs `MINIO_BUCKET_PROD`). Como o campo aceita Jinja, há três
@@ -112,10 +112,11 @@ formas:
   cada `dbt run`; o yml lê só `env_var('MINIO_BUCKET')`. Centraliza no orquestrador.
 - **Var do dbt** via `--vars` na invocação.
 
-**Leaning atual:** `target.name` (aposta segura — não depende de env setada
-corretamente fora do dbt). A decidir definitivamente quando montar a chamada do
-dbt dentro do flow Prefect (sub-projeto #5), porque a escolha depende de como o
-`pipe.py` vai invocar o dbt.
+**Decisão: `target.name`.** O `_staging__sources.yml` resolve o bucket com
+`{% if target.name == 'prod' %}{{ env_var('MINIO_BUCKET_PROD') }}{% else %}{{ env_var('MINIO_BUCKET_DEV') }}{% endif %}`.
+Mantém a lógica declarativa no dbt — `dbt run --target dev/prod` aponta pro bucket
+certo sem o orquestrador precisar setar env antes. Aposta segura: não depende de
+env setada corretamente fora do dbt.
 
 ---
 
@@ -136,10 +137,17 @@ dbt dentro do flow Prefect (sub-projeto #5), porque a escolha depende de como o
   (`SELECT * FROM {{ source(...) }}`) e rodar `dbt run -s unidade_conservacao
   --target dev`. Se materializar as 3.421 linhas, a tabela externa está lendo o
   bucket.
-- **Próximo bloqueio (decisão 2):** o `uc_municipio` precisa de `nome_norm` no
-  seed `municipio` para o JOIN — ver [[granularidade]] e [[diretorio-ibge]].
-  Decidir entre pré-computar no CSV ou normalizar no SQL (`strip_accents()` +
-  `lower()` no DuckDB). Só importa quando montar o `uc_municipio`.
+- **Decisão 2 (RESOLVIDA 2026-05-30): `nome_norm` do seed.** O `uc_municipio`
+  precisa que os dois lados do JOIN estejam na mesma forma normalizada. O lado
+  CNUC já traz `nome_norm` pré-computado no struct (em Python, via `unidecode`).
+  O lado seed `municipio` mantém o nome **cru** (snapshot fiel da BD) e a
+  normalização acontece **no SQL** do model: `lower(strip_accents(m.nome))`.
+  Escolha de **normalizar no SQL** (não pré-computar no CSV) para o seed
+  permanecer um snapshot puro do diretório. `strip_accents` é nativo do DuckDB
+  core (sem extensão `icu`) e `lower(strip_accents('Boa Esperança')) =
+  'boa esperanca'` bate com o `unidecode(...).lower()` do Python — o
+  `relationships` passou 100% sem lista manual. Ver [[granularidade]] e
+  [[normalizacao-nomes]].
 
 ---
 

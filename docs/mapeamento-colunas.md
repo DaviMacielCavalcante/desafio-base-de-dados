@@ -39,7 +39,7 @@ Regras seguidas (`manual_estilo_bd.md`):
 | `Pantanal` | `area_pantanal` | FLOAT64 | Área da UC no Bioma Pantanal, IBGE 2004 adaptado (em hectares). |
 | `Área Marinha` | `area_marinha` | FLOAT64 | Área da UC na Área Marinha (Mar Territorial e Zona Econômica Exclusiva), BCIM-IBGE 2016 (em hectares). |
 | `Bioma declarado` | `bioma_declarado` | STRING | Bioma declarado/predominante da UC. |
-| `% Além da linha de costa` | `proporcao_alem_linha_costa` | FLOAT64 | Proporção (0-100%) da área da UC além da linha de costa. |
+| `% Além da linha de costa` | `proporcao_alem_linha_costa` | FLOAT64 | Proporção (0 a 1) da área da UC além da linha de costa. **Correção empírica (2026-05-30):** apesar do nome bruto usar `%`, o dado real vem como **fração 0–1**, não percentual (min 0.0, max 1.0 no parquet). O range test no `schema.yml` usa `min 0, max 1`. |
 | `Grupo` | `grupo` | STRING | Grupo SNUC: `Proteção Integral` ou `Uso Sustentável`. |
 | `PI` | `indicador_protecao_integral` | INT64 | Indicador binário (1/0). 1 = UC é do grupo Proteção Integral. Derivado de `Grupo`. |
 | `US` | `indicador_uso_sustentavel` | INT64 | Indicador binário (1/0). 1 = UC é do grupo Uso Sustentável. Derivado de `Grupo`. |
@@ -57,7 +57,7 @@ Regras seguidas (`manual_estilo_bd.md`):
 
 ## Tabela `uc_municipio`
 
-> **Vive na gold (dbt), não na silver.** Decidido em 2026-05-29 — ver `docs/decisoes/granularidade.md` (histórico). Esta tabela não é produzida pelo tratamento Python; é um model dbt derivado de `unidade_conservacao` (silver) via `UNNEST(municipios_abrangidos)` + `LEFT JOIN` com o seed `municipio` (ou view `municipio_norm`) por `(nome_norm, sigla_uf)`.
+> **Vive na gold (dbt), não na silver.** Decidido em 2026-05-29 — ver `docs/decisoes/granularidade.md` (histórico). Esta tabela não é produzida pelo tratamento Python; é um model dbt (`uc_municipio.sql`) derivado da source de staging via `UNNEST(municipios_abrangidos)` + **`INNER JOIN`** com o seed `municipio` por `(nome_norm, sigla_uf)`. **Implementado em 2026-05-30:** o JOIN é `INNER` (não `LEFT`) — UC cujo município não casa simplesmente não gera par, mantendo `not_null`/`relationships` verdes; e a normalização do lado seed é **inline no SQL** (`lower(strip_accents(m.nome))`), sem view `municipio_norm` separada.
 
 Colunas esperadas no model dbt:
 
@@ -66,7 +66,23 @@ Colunas esperadas no model dbt:
 | `id_uc` | STRING | `unidade_conservacao.id_uc` | Chave da UC (FK). |
 | `id_municipio` | STRING | seed `municipio.id_municipio` (via JOIN) | Código IBGE 7 dígitos do município. |
 
-Testes obrigatórios (`schema.yml`): `not_null` + `relationships` em `id_municipio`; chave composta `(id_uc, id_municipio)` única.
+Testes (`schema.yml`): `not_null` + `relationships` em `id_municipio`; chave composta `(id_uc, id_municipio)` única (`dbt_utils.unique_combination_of_columns`).
+
+---
+
+## Tabela `uc_bioma`
+
+> **Vive na gold (dbt), não na silver.** Decidido em 2026-05-30 — ver `docs/decisoes/granularidade.md` (adendo `uc_bioma`). Model `uc_bioma.sql` derivado da source via `UNPIVOT` das 6 colunas `area_<bioma>` da `unidade_conservacao` (formato long; manual BD §"long over wide"). Uma linha por par `(id_uc, bioma)` onde `area_ha > 0`. As 6 colunas wide **saem** da `unidade_conservacao` (via `select * exclude (...)`); ficam só os agregados `area_soma_biomas`/`area_soma_biomas_continental`.
+
+Colunas esperadas no model dbt:
+
+| Coluna | Tipo | Origem | Descrição |
+|---|---|---|---|
+| `id_uc` | STRING | `unidade_conservacao.id_uc` | Chave da UC (FK). |
+| `bioma` | STRING | nome da coluna `area_<bioma>` (via UNPIVOT) | Bioma legível: `Amazônia`, `Caatinga`, `Cerrado`, `Mata Atlântica`, `Pampa`, `Pantanal`. |
+| `area_ha` | FLOAT64 | valor da coluna `area_<bioma>` | Área da UC no bioma, em hectares. |
+
+Testes (`schema.yml`): chave composta `(id_uc, bioma)` única; `not_null` em `id_uc`/`bioma`/`area_ha`; `accepted_values` nos 6 biomas; `accepted_range` (`area_ha >= 0`).
 
 ---
 

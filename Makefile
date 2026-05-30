@@ -1,4 +1,4 @@
-.PHONY: setup up down sync flow lint format dbt-deps dbt-seed dbt-build dbt-test clean help
+.PHONY: setup up down sync flow lint format dbt-deps dbt-seed dbt-build dbt-parse dbt-test clean help
 .DEFAULT_GOAL := help
 
 # Carrega .env se existir e exporta tudo pros subprocessos (dbt, uv, etc.)
@@ -57,6 +57,9 @@ dbt-build:
 	uv run dbt seed --target dev $(DBT_FLAGS)
 	uv run dbt run --target dev $(DBT_FLAGS)
 	uv run dbt test --target dev $(DBT_FLAGS)
+
+dbt-parse:
+	uv run dbt parse --target dev $(DBT_FLAGS)
 
 dbt-test:
 	uv run dbt test --target dev $(DBT_FLAGS)

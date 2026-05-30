@@ -110,6 +110,62 @@ Estrutura:
 
 ---
 
+## Adendo: tabela `uc_bioma` (2026-05-30)
+
+Terceiro model gold, irmão do `uc_municipio`: aplica o mesmo raciocínio
+(coluna(s) multi-valor → tabela derivada) às **6 colunas `area_<bioma>`** da
+fonte, que são um **formato wide**.
+
+**Decisão: wide → long.** O manual BD é explícito (§"Tabelas devem estar no
+formato long, ao invés de wide"). As 6 colunas `area_amazonia … area_pantanal`
+**saem** da `unidade_conservacao` (via `select * exclude (...)`) e viram a
+`uc_bioma`: 1 linha por par `(id_uc, bioma)` onde `area_ha > 0`, derivada por
+`UNPIVOT` na fonte de staging. `bioma` é categórica legível (`Amazônia`,
+`Caatinga`, …) — sem dicionário (o valor já é o rótulo).
+
+**Cardinalidade real (empírica 2026-05-30):** 81 UCs têm área em >1 bioma — caso
+de uso concreto pro long.
+
+**O que permanece na achatada:** os **agregados** `area_soma_biomas` e
+`area_soma_biomas_continental` (totais, não a quebra por bioma) ficam na
+`unidade_conservacao`. A silver (parquet) mantém as 6 colunas wide — a reshape é
+decisão de modelagem gold, não de tratamento.
+
+**Outras candidatas avaliadas e descartadas (empírico):** `sigla_uf` é multi-UF
+(38 UCs) mas **derivável** de `uc_municipio` ⋈ `municipio` — não vira tabela.
+`mosaico` é single-valor (0 separadores). `sitios_ramsar`/`sitios_patrimonio_mundial`
+são esparsos demais (2 multi cada). `orgao_gestor`/`outros_atos_legais` são texto
+livre, não normalizam limpo.
+
+**Testes:** `unique_combination_of_columns (id_uc, bioma)`, `not_null` em
+`id_uc`/`bioma`/`area_ha`, `accepted_values` nos 6 biomas, `accepted_range`
+(`area_ha >= 0`).
+
+## Adendo: tabela `dicionario` (2026-05-30)
+
+Além das duas tabelas-modelo e do diretório `municipio`, o dataset ganhou uma
+quarta tabela: o **dicionário** (seed `dicionario.csv`), no padrão BD — uma única
+tabela por base que mapeia `(id_tabela, nome_coluna, chave) → valor`.
+
+**Escopo decidido:** cobre **apenas as colunas `indicador_*`** da
+`unidade_conservacao` (8 colunas, 16 linhas: `0`/`1` → significado; `indicador_fonte_shp`
+mapeia `0→Ato legal`, `1→Geoprocessamento (SHP)`, os demais `0→Não`/`1→Sim`).
+
+**Por que só os `indicador_*`:** as outras categóricas (`esfera_administrativa`,
+`grupo`, `categoria_manejo`, `bioma_declarado`) já são armazenadas como **texto
+legível**, não código — no estilo BD, quando o valor já é o rótulo, não há código
+a traduzir, então não entram no dicionário. Só os `indicador_*` guardam código
+(`0`/`1`) com significado implícito.
+
+**Sub-decisões:** `cobertura_temporal` deixada **vazia** (dataset é snapshot CNUC
+2026-03, sem partição temporal — o mapa `0→Não` é invariante no tempo).
+`categoria_iucn` (`Ia`/`II`/…) **adiada** — daria pra mapear aos nomes oficiais
+IUCN, mas exige fonte dos rótulos; fica como melhoria futura. **Não** re-codificar
+as categóricas que já são texto (seria trabalho a mais que piora a legibilidade).
+
+Ver `manual_estilo_bd.md` §Dicionários e §Diretórios (a distinção dicionário ≠
+diretório), e [[diretorio-ibge]].
+
 ## Quando reconsiderar
 
 - Se o reviewer pedir uma tabela única "denormalizada" pra simplificar consulta — improvável, mas possível.

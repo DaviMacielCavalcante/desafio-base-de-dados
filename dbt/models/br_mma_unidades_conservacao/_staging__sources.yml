@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: br_mma_unidades_conservacao_staging
+    schema: br_mma_unidades_conservacao_staging 
+    tables:
+      - name: unidade_conservacao 
+        meta:
+          external_location: >-
+            s3://{% if target.name == 'prod' %}{{ env_var('MINIO_BUCKET_PROD') }}{% else %}{{ env_var('MINIO_BUCKET_DEV') }}{% endif %}/staging/br_mma_unidades_conservacao/unidade_conservacao/*.parquet
+           

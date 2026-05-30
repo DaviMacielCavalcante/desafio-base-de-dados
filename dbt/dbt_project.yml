@@ -9,3 +9,5 @@ test-paths: ["tests"]
 models:
   desafio_bd:
     +materialized: view
+    br_mma_unidades_conservacao:
+      +materialized: table

@@ -1,0 +1,162 @@
+version: 2
+
+models:
+  - name: br_mma_unidades_conservacao__unidade_conservacao
+    description: "Cada registro corresponde a uma unidade de conservação (UC) do Cadastro Nacional de Unidades de Conservação (CNUC)."
+    columns:
+      - name: sigla_uf
+        description: "Sigla(s) da(s) UF(s) com área protegida pela UC. Multi-valor separado por vírgula quando a UC abrange mais de uma UF."
+      - name: id_uc
+        description: "Código identificador da UC no CNUC"
+        tests: [unique, not_null]
+      - name: nome_uc
+        description: "Denominação oficial da UC, conforme cadastrada no CNUC."
+      - name: esfera_administrativa
+        description: "Esfera administrativa da UC: Federal, Estadual ou Municipal (Distrito Federal entra como Estadual)."
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['Federal', 'Estadual', 'Municipal']
+      - name: categoria_manejo
+        description: "Categoria de manejo conforme a Lei 9.985/2000 (SNUC)."
+      - name: categoria_iucn
+        description: "Categoria equivalente no Sistema IUCN de Áreas Protegidas (Ia, Ib, II, III, IV, V, VI). Prefixo 'Category ' removido na normalização. No dataset atual ocorrem apenas Ia, II, III, IV, V e VI."
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['Ia', 'II', 'III', 'IV', 'V', 'VI']
+      - name: grupo
+        description: "Grupo SNUC da UC: Proteção Integral ou Uso Sustentável."
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['Proteção Integral', 'Uso Sustentável']
+      - name: bioma_declarado
+        description: "Bioma declarado/predominante da UC."
+      - name: mosaico
+        description: "Mosaico de UCs ao qual a UC pertence."
+      - name: municipios_abrangidos
+        description: "Lista dos municípios abrangidos pela UC, como ARRAY[STRUCT(nome, sigla_uf, nome_norm)]. O campo nome_norm (minúsculo, sem acentos) é a chave de JOIN com o diretório IBGE no model uc_municipio. Origem: string com separador ' - '."
+      - name: programa_projeto
+        description: "Programa ou projeto associado à UC. Texto não-estruturado."
+      - name: sitios_patrimonio_mundial
+        description: "Sítios do Patrimônio Mundial associados à UC."
+      - name: sitios_ramsar
+        description: "Sítios Ramsar (zonas úmidas de importância internacional) associados à UC."
+      - name: orgao_gestor
+        description: "Nome do órgão gestor responsável pela UC, conforme cadastrado no CNUC."
+      - name: ato_legal_criacao
+        description: "Ato legal que cria a UC (ex: Portaria 52/2001 de 23/04/2001)."
+      - name: outros_atos_legais
+        description: "Atos legais subsequentes à criação. Sentinel 'Sem informação.' da fonte substituído por NULL."
+      - name: codigo_wdpa
+        description: "Código da UC no World Database on Protected Areas (WDPA). Sentinel 'Sem informação.' da fonte substituído por NULL."
+      - name: indicador_plano_manejo
+        description: "Indicador binário (1/0): 1 = UC possui plano de manejo concluído; 0 = não possui ou em elaboração."
+      - name: indicador_conselho_gestor
+        description: "Indicador binário (1/0): 1 = UC possui conselho gestor reconhecido por portaria do órgão."
+      - name: indicador_fonte_shp
+        description: "Indicador binário (1/0): 1 = área obtida por geoprocessamento (SHP); 0 = área conforme ato legal."
+      - name: indicador_protecao_integral
+        description: "Indicador binário (1/0): 1 = UC do grupo Proteção Integral. Derivado de grupo."
+      - name: indicador_uso_sustentavel
+        description: "Indicador binário (1/0): 1 = UC do grupo Uso Sustentável. Derivado de grupo."
+      - name: indicador_marinha
+        description: "Indicador binário (1/0): 1 = UC abrange área no Mar Territorial brasileiro."
+      - name: indicador_municipio_costeiro
+        description: "Indicador binário (1/0): 1 = UC abrange município com costa marítima."
+      - name: indicador_municipio_costeiro_marinha
+        description: "Indicador binário (1/0): 1 = UC abrange simultaneamente município costeiro e área marinha (AND, não OR)."
+      - name: ano_criacao
+        description: "Ano do ato legal que cria a UC."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 1900
+                max_value: 2026
+      - name: ano_ato_legal_mais_recente
+        description: "Ano do ato legal mais recente que altera características relevantes da UC (limites, recategorização, nome)."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 1900
+                max_value: 2026
+      - name: proporcao_alem_linha_costa
+        description: "Proporção (0 a 1) da área da UC além da linha de costa."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1
+      - name: area_marinha
+        description: "Área da UC na área marinha (Mar Territorial e Zona Econômica Exclusiva), em hectares (BCIM-IBGE 2016)."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+      - name: area_soma_biomas_continental
+        description: "Soma das áreas da UC nos biomas continentais (exclui a porção marinha), em hectares."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+      - name: area_soma_biomas
+        description: "Soma das áreas da UC distribuídas pelos biomas, em hectares."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+      - name: area_ato_legal_criacao
+        description: "Área da UC conforme estabelecida no ato legal de criação, em hectares."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+
+  - name: br_mma_unidades_conservacao__uc_municipio
+    description: "Tabela ponte (n:n) entre unidade de conservação e município. Uma linha por par (id_uc, id_municipio), derivada do UNNEST de municipios_abrangidos + JOIN com o diretório IBGE."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - id_uc
+              - id_municipio
+    columns:
+      - name: id_uc
+        description: "Código da UC no CNUC. Chave estrangeira para unidade_conservacao."
+        tests: [not_null]
+      - name: id_municipio
+        description: "Código IBGE de 7 dígitos do município abrangido pela UC, obtido por JOIN com o diretório municipio."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('municipio')
+                field: id_municipio
+  - name: br_mma_unidades_conservacao__uc_bioma
+    description: "Distribuição da área da UC por bioma (formato long). Uma linha por par (id_uc, bioma) onde a UC tem área > 0 no bioma. Deriva das 6 colunas area_<bioma> da unidade_conservacao via UNPIVOT."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - id_uc
+              - bioma
+    columns:
+      - name: id_uc
+        description: "Código da UC no CNUC. Chave estrangeira para unidade_conservacao."
+        tests: [not_null]
+      - name: bioma
+        description: "Bioma brasileiro em que a UC tem área (IBGE 2004 adaptado)."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Amazônia', 'Caatinga', 'Cerrado', 'Mata Atlântica', 'Pampa', 'Pantanal']
+      - name: area_ha
+        description: "Área da UC no bioma, em hectares."
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+

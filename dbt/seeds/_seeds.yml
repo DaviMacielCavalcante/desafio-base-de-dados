@@ -26,3 +26,26 @@ seeds:
         description: Sigla da Unidade da Federação (2 letras maiúsculas).
         tests:
           - not_null
+  - name: dicionario
+    description: |
+      Dicionário do dataset (padrão Base dos Dados): mapeia o código
+      de cada coluna categórica codificada ao seu significado.
+      Cobre as colunas indicador_* da tabela unidade_conservacao.
+    config:
+      column_types:
+        id_tabela: varchar
+        nome_coluna: varchar
+        cobertura_temporal: varchar
+        chave: varchar
+        valor: varchar
+    columns:
+      - name: nome_coluna
+        description: "Nome da coluna categórica traduzida."
+        tests: [not_null]
+      - name: chave
+        description: "Código armazenado no dado (STRING, preserva semântica do código)."
+        tests: [not_null]
+      - name: valor
+        description: "Significado legível da chave, padronizado (inicial maiúscula)."
+        tests: [not_null]
+

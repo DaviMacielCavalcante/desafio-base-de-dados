@@ -1,0 +1,17 @@
+id_tabela,nome_coluna,cobertura_temporal,chave,valor
+unidade_conservacao,indicador_plano_manejo,,0,Não
+unidade_conservacao,indicador_plano_manejo,,1,Sim
+unidade_conservacao,indicador_conselho_gestor,,0,Não
+unidade_conservacao,indicador_conselho_gestor,,1,Sim
+unidade_conservacao,indicador_fonte_shp,,0,Ato legal
+unidade_conservacao,indicador_fonte_shp,,1,Geoprocessamento (SHP)
+unidade_conservacao,indicador_protecao_integral,,0,Não
+unidade_conservacao,indicador_protecao_integral,,1,Sim
+unidade_conservacao,indicador_uso_sustentavel,,0,Não
+unidade_conservacao,indicador_uso_sustentavel,,1,Sim
+unidade_conservacao,indicador_marinha,,0,Não
+unidade_conservacao,indicador_marinha,,1,Sim
+unidade_conservacao,indicador_municipio_costeiro,,0,Não
+unidade_conservacao,indicador_municipio_costeiro,,1,Sim
+unidade_conservacao,indicador_municipio_costeiro_marinha,,0,Não
+unidade_conservacao,indicador_municipio_costeiro_marinha,,1,Sim
