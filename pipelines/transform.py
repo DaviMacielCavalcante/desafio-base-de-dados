@@ -238,17 +238,15 @@ def build_municipios_struct(df: pl.DataFrame) -> pl.DataFrame:
 def reorder_columns(df: pl.DataFrame) -> pl.DataFrame:
     return df.select(ORDERED_COLUMNS)
 
-def transform() -> Path:
+def transform(df: pl.DataFrame) -> Path:
     
     ROOT = Path(__file__).resolve().parents[1]
     
     STAGING_PATH = ROOT / "data"/ "staging" / "br_mma_unidades_conservacao"/ "unidade_conservacao" / "unidade_conservacao.parquet"
     
-
-    df_uc = get_data()
-    validate_schema(df_uc)
-    check_duplicates_uc_codes(df_uc)
-    df_dropped_cols = drop_columns(df_uc)
+    validate_schema(df)
+    check_duplicates_uc_codes(df)
+    df_dropped_cols = drop_columns(df)
     df_no_nulls_or_empty_rows = drop_null_or_empty_rows(df_dropped_cols)
     df_uc_casted_cols = cast_columns(df_no_nulls_or_empty_rows)
     df_trimmed = trim_strings(df_uc_casted_cols)

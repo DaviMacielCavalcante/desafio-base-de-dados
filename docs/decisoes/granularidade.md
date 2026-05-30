@@ -101,7 +101,7 @@ Estrutura:
 
 ## Consequências / implicações
 
-- **dbt (gold):** dois models — `models/br_mma_unidades_conservacao/unidade_conservacao.sql` (SELECT direto da silver) e `models/br_mma_unidades_conservacao/uc_municipio.sql` (UNNEST + JOIN com seed `municipio`).
+- **dbt (gold):** dois models — `models/br_mma_unidades_conservacao/unidade_conservacao.sql` (SELECT direto da staging) e `models/br_mma_unidades_conservacao/uc_municipio.sql` (UNNEST + JOIN com seed `municipio`). Ambos consomem a tabela externa via `source(...)` — ver [[tabela-externa-staging]].
 - **`schema.yml`:** testes `unique` + `not_null` em `id_uc` no model principal. Testes `not_null` + `relationships` em `id_municipio` no model `uc_municipio`. Teste de chave composta `(id_uc, id_municipio)` única na ponte.
 - **Tratamento (sub-projeto #2):** **sem bifurcação.** Pipeline linear no `df`. Em vez de explodir e separar em duas tabelas, uma função `build_municipios_struct(df)` transforma a coluna `Municípios Abrangidos` (string com separador) em `ARRAY[STRUCT(nome, sigla_uf, nome_norm)]`. A normalização do nome (`nome_norm`) é pré-computada em Python e armazenada no struct — ver [[normalizacao-nomes]] — para que o JOIN no dbt seja simples comparação de igualdade, sem precisar `unaccent`/`icu` em DuckDB.
 - **Output do tratamento:** **um único parquet** em `data/staging/br_mma_unidades_conservacao/unidade_conservacao/`. Não há mais parquet `uc_municipio` na silver.
@@ -124,4 +124,5 @@ Estrutura:
 - [[ucs-marinhas]] — decisão complementar.
 - [[normalizacao-nomes]] — algoritmo do join CNUC ↔ IBGE.
 - [[diretorio-ibge]] — fonte do `id_municipio`.
+- [[tabela-externa-staging]] — como a gold lê o parquet do bucket (source dbt-duckdb).
 - `docs/superpowers/plans/2026-05-28-tratamento.md` §0.1.
