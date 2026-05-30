@@ -8,7 +8,7 @@
 
 ## Contexto
 
-O CNUC traz o nome de município no campo `Municípios Abrangidos` em **caixa alta + acentos + sufixo `(SIGLA_UF)`**, ex: `"CARAGUATATUBA (SP)"`, `"SÃO PAULO (SP)"`. Quando UC abrange múltiplos municípios, o separador é vírgula (`,`), conforme dicionário oficial.
+O CNUC traz o nome de município no campo `Municípios Abrangidos` em **caixa alta + acentos + sufixo `(SIGLA_UF)`**, ex: `"CARAGUATATUBA (SP)"`, `"SÃO PAULO (SP)"`. Quando UC abrange múltiplos municípios, o separador é `" - "` (espaço-hífen-espaço), ex: `"CAMANDUCAIA (MG) - EXTREMA (MG)"`. (O dicionário oficial diz "vírgula", mas isso só vale para a coluna `UF`; no dado real `Municípios Abrangidos` usa `" - "` — ver [[granularidade]].)
 
 A tabela de diretório do IBGE ([[diretorio-ibge]]) traz o nome canônico em **caixa inicial maiúscula + acentos**, ex: `"Caraguatatuba"`, `"São Paulo"`. Os formatos não casam diretamente.
 
@@ -39,11 +39,24 @@ A pergunta: **qual algoritmo de normalização garante o match em ~100% dos caso
 
 ## Tratamento do multi-valor
 
-Antes da normalização:
+Histórico: a versão anterior previa **split + explode em Python** dentro da silver, gerando uma linha por par `(codigo_uc, municipio_normalizado, sigla_uf)`. A decisão de granularidade foi revisada em 2026-05-29 (ver [[granularidade]]) — a explosão agora acontece **no dbt (gold)** via `UNNEST`, não em Python.
 
-1. **Split por vírgula** em `Municípios Abrangidos` (separador confirmado pelo dicionário). Cuidado: trim em cada elemento depois do split.
-2. **Split por vírgula** em `UF` também — UCs que cruzam estados têm formato `"AM, PA"`.
-3. **Explode** depois do split — gera uma linha por par `(codigo_uc, municipio_normalizado, sigla_uf)`.
+**Fluxo atual:**
+
+1. Em Python (silver, `build_municipios_struct`):
+   - **Split por `" - "`** em `Municípios Abrangidos` → lista de strings.
+   - Trim em cada elemento.
+   - **Extrair `(SIGLA_UF)`** do final de cada elemento → `sigla_uf` escalar; resto vira `nome` com caixa preservada.
+   - **Computar `nome_norm`** aplicando a função de normalização ao `nome`.
+   - Montar `STRUCT { nome, sigla_uf, nome_norm }` por elemento.
+   - Resultado: coluna `municipios_abrangidos: ARRAY[STRUCT(nome, sigla_uf, nome_norm)]`.
+2. No dbt (gold, model `uc_municipio`):
+   - `UNNEST(municipios_abrangidos)` para gerar 1 linha por par.
+   - `LEFT JOIN` com `municipio` (ou view derivada `municipio_norm`) por `(nome_norm, sigla_uf)` → resolve `id_municipio`.
+
+**Por que `nome_norm` é pré-computado em Python:** DuckDB não tem `unaccent` nativo (requer extensão `icu`). Mantendo a normalização em Python, o JOIN no dbt vira comparação simples de igualdade — sem dependência de extensão Polars/DuckDB e sem risco de divergência entre normalizações em linguagens diferentes.
+
+**`UF` (multi-valor da UC):** continua como string multi-valor na principal (`"AM, PA"`), conforme decidido — não é explodida nem normalizada, é atributo documental.
 
 ---
 
@@ -71,8 +84,10 @@ Mesmo com algoritmo bom, alguns nomes podem não casar (typos no CNUC, municípi
 ## Consequências / implicações
 
 - **Dep nova:** `unidecode` (ou `anyascii`). Adicionar via `uv add unidecode`. Leve, sem deps secundárias.
-- **Função utilitária:** em `pipelines/transform.py` ou módulo dedicado (`pipelines/normalize.py`). Aplicada uma vez na carga do seed IBGE (sub-projeto #4) e uma vez no tratamento CNUC (sub-projeto #2).
-- **Auditoria:** o relatório de não-casados vira artefato do flow Prefect (sub-projeto #5) — salvar em `data/audit/` ou similar.
+- **Função utilitária `normalize_municipio(s) -> str`** em `pipelines/transform.py` ou módulo dedicado (`pipelines/normalize.py`). Aplicada:
+  - **No tratamento CNUC (Python)** — dentro de `build_municipios_struct`, computando o campo `nome_norm` de cada elemento do array.
+  - **No seed `municipio` ou model dbt intermediário** — a forma exata é decidida em [[diretorio-ibge]]. A garantia: o `nome_norm` no lado IBGE precisa ser produzido pelo **mesmo algoritmo** que o lado CNUC.
+- **Auditoria:** o relatório de não-casados vira artefato do flow Prefect (sub-projeto #5) — salvar em `data/audit/` ou similar. Implementação: query no dbt que conta `WHERE id_municipio IS NULL` no model `uc_municipio` e publica métrica.
 
 ---
 

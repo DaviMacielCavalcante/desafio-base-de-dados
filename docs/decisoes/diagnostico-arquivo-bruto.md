@@ -36,7 +36,7 @@ A exploração será conduzida em um notebook `.ipynb` (preferência do Davi). A
 
 ### B) Script `.sh` separado que gera `.txt` chave=valor
 
-**Como funciona:** um arquivo `scripts/diagnose_raw.sh` faz os mesmos comandos, parseia, e grava algo como `encoding=iso-8859-1\nlinhas=2734\nseparador=;` em `reports/raw_diag.txt`. O notebook lê esse txt.
+**Como funciona:** um arquivo `scripts/diagnose_raw.sh` faz os mesmos comandos, parseia, e grava algo como `encoding=iso-8859-1\nlinhas=3421\nseparador=;` em `reports/raw_diag.txt`. O notebook lê esse txt.
 
 **Prós:**
 - Script é reprodutível fora do notebook (CI, terminal, cron).

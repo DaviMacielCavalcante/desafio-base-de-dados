@@ -8,9 +8,11 @@
 
 ## Contexto
 
-Parte das UCs do CNUC são **marinhas** (reservas no oceano, área marinha exclusiva). Não têm município associado — o campo `Municípios Abrangidos` aparece vazio.
+Parte das UCs do CNUC são **marinhas** (reservas no oceano, área marinha exclusiva).
 
-Isso colide diretamente com a regra do `REVISAO.md`: `not_null(id_municipio)` e `relationships(id_municipio)` precisam passar nos testes dbt obrigatórios.
+> **Correção empírica (2026-05-29):** a premissa original deste doc era que UCs marinhas teriam `Municípios Abrangidos` **vazio**. A inspeção do dado real desmente isso: das 229 UCs com `Mar Territorial = Sim`, **todas** trazem municípios costeiros abrangidos (`Municípios Abrangidos` tem **0 nulls e 0 vazios** no dataset inteiro). Ou seja, **não existe UC sem município** aqui — o cenário que esta decisão buscava resolver é teórico neste dataset. As consequências práticas estão revistas abaixo; a decisão (e) de manter `indicador_marinha` segue válida, mas como **flag analítica**, não como mecanismo de exclusão da ponte.
+
+A preocupação original era com a regra do `REVISAO.md`: `not_null(id_municipio)` e `relationships(id_municipio)` precisam passar nos testes dbt obrigatórios. Com municípios costeiros presentes em todas as UCs, esses testes passam naturalmente — toda UC gera ≥1 par válido na ponte.
 
 A pergunta: **como representar UCs marinhas sem quebrar os testes nem perder a informação?**
 
@@ -82,7 +84,7 @@ Coluna nova:
 |---|---|---|
 | `indicador_marinha` | `INT64` (0/1) | 1 se a UC tem área marinha e não tem município associado |
 
-**Como derivar:** a partir da coluna `Área Marinha` (presente no CSV bruto) e/ou `Municípios Abrangidos` vazio. Definir a regra exata no tratamento (sub-projeto #2 implementação).
+**Como derivar:** a partir das colunas `Mar Territorial` (Sim/Não) e/ou `Área Marinha` (> 0) do CSV bruto. **Não** usar `Municípios Abrangidos` vazio como sinal — esse campo nunca é vazio neste dataset (ver Correção empírica acima). O CSV bruto já traz `Mar Territorial`, `Município Costeiro` e `Município Costeiro + Área Marinha` como indicadores prontos — provável caminho mais direto que recalcular de `Área Marinha`.
 
 ---
 
@@ -97,8 +99,8 @@ Coluna nova:
 
 ## Consequências / implicações
 
-- **Tratamento (sub-projeto #2):** computar `indicador_marinha` durante a transformação. Regra a definir mas provavelmente: `(area_marinha > 0 AND municipios_abrangidos IS NULL)` ou `(municipios_abrangidos IS NULL)` simples.
-- **Ponte:** filtrar UCs marinhas antes do explode municipal — ou explodir todas e dropar as que ficarem sem `id_municipio` após o join IBGE.
+- **Tratamento (sub-projeto #2):** computar `indicador_marinha` durante a transformação, derivado de `Mar Territorial` (ou `Área Marinha > 0`) — **não** de `municipios_abrangidos` vazio, que não ocorre neste dataset.
+- **Ponte:** **não filtrar** UCs marinhas — elas têm municípios costeiros e devem entrar no `uc_municipio` normalmente. O explode universal (todas as UCs → UNNEST → JOIN IBGE) já cobre o caso; nenhuma UC fica sem `id_municipio` por ser marinha. Manter o passo de logar/dropar pares sem match IBGE (typos, municípios novos), mas isso é ortogonal à condição marinha.
 - **`schema.yml`:** marcar `indicador_marinha` como `not_null` (toda UC tem essa flag, mesmo continental). Documentar a derivação na descrição da coluna.
 - **Estilo BD:** `indicador_` é prefixo permitido pra booleanas (ver `manual_estilo_bd.md`). ✅
 

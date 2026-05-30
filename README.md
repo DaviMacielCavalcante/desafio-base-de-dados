@@ -98,7 +98,7 @@ O default ortodoxo é `~/.dbt/profiles.yml` (fora do repo). Optei por incluir no
 
 ### Estratégia de atualização
 
-**A definir no sub-projeto #5 (Prefect flow).** Candidatas: overwrite full (mais simples, dado o volume ~2.7k UCs), snapshot dbt (preserva histórico), incremental por chave. Decisão será documentada aqui após brainstorm específico.
+**A definir no sub-projeto #5 (Prefect flow).** Candidatas: overwrite full (mais simples, dado o volume ~3.4k UCs), snapshot dbt (preserva histórico), incremental por chave. Decisão será documentada aqui após brainstorm específico.
 
 ## Layout
 

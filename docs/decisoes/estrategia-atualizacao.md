@@ -15,10 +15,10 @@ Em outras palavras: tem que **escolher** uma estratégia, **justificar**, e gara
 
 ## Características do dado (entram na decisão)
 
-- **Volume:** ~2.700 UCs federais + estaduais. Pequeno.
+- **Volume:** ~3.4k UCs federais + estaduais (3.421 no snapshot atual). Pequeno.
 - **Cadência de mudança:** muito baixa. UCs são criadas por decreto/lei (dezenas/ano, não diárias).
 - **Histórico:** o desafio pede explicitamente "status mais recente" — **não pede** série temporal de mudanças.
-- **Custo:** zero (DuckDB local; e mesmo em BigQuery, com 2.7k linhas, irrelevante).
+- **Custo:** zero (DuckDB local; e mesmo em BigQuery, com 3.4k linhas, irrelevante).
 - **Tolerância a erro:** se uma run trouxer lixo, queremos que a próxima limpe — não acumular.
 
 ---
@@ -120,7 +120,7 @@ Implementação em flow (sub-projeto #5): sequência `download → trata → upl
 
 ## Justificativa (a entrar no README final)
 
-1. **Volume é desprezível** (~2.7k linhas). Custo de reprocessar é nulo.
+1. **Volume é desprezível** (~3.4k linhas). Custo de reprocessar é nulo.
 2. **Brief pede "status mais recente"** — não há necessidade de histórico de mudanças.
 3. **Cadência de mudança é baixa** (dezenas/ano), então rodar semanal/mensal cobre folgadamente.
 4. **Idempotência é trivial**: mesmo input → mesma tabela final, sem efeitos colaterais.

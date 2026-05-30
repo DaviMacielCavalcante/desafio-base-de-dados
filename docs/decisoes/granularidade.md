@@ -8,7 +8,9 @@
 
 ## Contexto
 
-Uma UC pode estar em mais de um município. O CNUC representa multi-municipalidade na coluna `Municípios Abrangidos` com separador interno `,` (confirmado pelo dicionário oficial — ver `docs/exploracao-bruto.md`).
+Uma UC pode estar em mais de um município. O CNUC representa multi-municipalidade na coluna `Municípios Abrangidos` com separador interno `" - "` (espaço-hífen-espaço), ex: `"CAMANDUCAIA (MG) - EXTREMA (MG)"`.
+
+> **Correção empírica (2026-05-29):** o dicionário oficial afirma "separados por vírgula", mas a inspeção do dado real (`pipelines/extract.get_data()`) mostra **0 linhas com vírgula** em `Municípios Abrangidos` e **587 com `" - "`**. A vírgula vale para a coluna `UF` (multi-UF: `"RS, SC"`), não para municípios. Nomes com hífen interno (`SAPUCAÍ-MIRIM`, `VARRE-SAI`) não quebram o split porque o hífen interno não tem espaços em volta. Ver `docs/exploracao-bruto.md`.
 
 A pergunta: **qual o nível de granularidade da tabela final?**
 
@@ -67,32 +69,44 @@ A escolha condiciona diretamente:
 
 ## Decisão
 
-**Escolha: (c) star schema com tabela ponte `uc_municipio`.**
+**Escolha: (c) star schema, com responsabilidades divididas entre camadas (medallion):**
+
+- **Silver (parquet):** uma tabela única `unidade_conservacao`, 1 linha por UC. A multi-municipalidade é preservada numa coluna `municipios_abrangidos: ARRAY[STRUCT(nome, sigla_uf, nome_norm)]`.
+- **Gold (dbt models):**
+  - `unidade_conservacao` — espelha a silver (1 linha por UC).
+  - `uc_municipio` — **derivada via UNNEST + JOIN** com o seed `municipio` do diretório IBGE. 1 linha por par `(id_uc, id_municipio)`.
 
 Estrutura:
 
-| Tabela | Granularidade | Tem `id_municipio`? |
-|---|---|---|
-| `unidade_conservacao` | 1 linha por UC | Não |
-| `uc_municipio` | 1 linha por par `(codigo_uc, id_municipio)` | Sim |
+| Camada | Tabela | Granularidade | Forma da relação UC ↔ município |
+|---|---|---|---|
+| Silver | `unidade_conservacao` | 1 linha por UC | ARRAY[STRUCT] na coluna `municipios_abrangidos` |
+| Gold | `unidade_conservacao` | 1 linha por UC | ARRAY[STRUCT] preservado (espelha silver) |
+| Gold | `uc_municipio` | 1 linha por par `(id_uc, id_municipio)` | Escalar (UNNEST do array no model) |
+
+**Histórico:** versão anterior desta decisão previa **dois parquets** na silver (`unidade_conservacao` + `uc_municipio`) e a bifurcação acontecia em Python. Foi revisada em 2026-05-29 para a forma acima, alinhando star schema com filosofia medallion (modelagem analítica em gold, não em silver). Ver `feedback_arquitetura-adaptavel`.
 
 ---
 
 ## Justificativa
 
-1. **Testes dbt obrigatórios fluem naturalmente.** `not_null(id_municipio)` e `relationships(id_municipio)` vivem na ponte, onde a coluna é sempre escalar e não-nula.
-2. **UCs marinhas resolvem-se sozinhas** — não entram na ponte (não têm município). Sem sentinel, sem NULL, sem custom test. Ver [[ucs-marinhas]].
-3. **Sem duplicação de atributos da UC** (nome, ano, área total). Manutenção é mais simples; mudança na descrição da UC altera uma linha só.
-4. **Modelo n:n é honesto sobre a relação** — UC e município se relacionam muitos-pra-muitos no mundo real (UCs grandes em vários municípios, municípios com várias UCs).
+1. **Aderência à medallion.** Silver é dado tratado e canônico. Gold é modelagem analítica. Star schema é decisão de **modelagem**, vive naturalmente em gold.
+2. **Testes dbt obrigatórios fluem naturalmente.** `not_null(id_municipio)` e `relationships(id_municipio)` rodam no model gold `uc_municipio`, onde a coluna é escalar e não-nula.
+3. **UCs marinhas resolvem-se sozinhas** — continuam presentes em `unidade_conservacao` com `indicador_marinha = 1`. Ver [[ucs-marinhas]]. **Correção empírica (2026-05-29):** neste dataset **não há UC sem município** — as 229 UCs com `Mar Territorial = Sim` trazem todas os municípios costeiros abrangidos. Logo elas **aparecem** no `uc_municipio` (com o `id_municipio` costeiro), e o `not_null`/`relationships` passam porque toda UC tem ≥1 município válido, não porque marinhas seriam excluídas. O cenário de lista vazia é teórico aqui.
+4. **Sem duplicação de atributos da UC.** Atributos vivem em 1 linha na principal; a ponte gold só tem a relação.
+5. **Pipeline Python mais simples.** Sem bifurcação. Um único `df` segue o fluxo do começo ao fim e vira um único parquet.
+6. **Mais aderente ao estilo BD.** Modelagem analítica em dbt/SQL é o canônico — explode, UNNEST e joins são operações SQL idiomáticas, e dbt brilha aqui.
 
 ---
 
 ## Consequências / implicações
 
-- **dbt:** dois models — `models/br_mma_unidades_conservacao/unidade_conservacao.sql` e `models/br_mma_unidades_conservacao/uc_municipio.sql`.
-- **`schema.yml`:** testes `unique` + `not_null` em `codigo_uc` da principal. Testes `not_null` + `relationships` em `id_municipio` da ponte. Teste de **chave composta** `(codigo_uc, id_municipio)` única na ponte.
-- **Tratamento (sub-projeto #2):** o parquet de saída pode ser único (com a relação já explodida) ou dois (principal + ponte). Decidir na implementação — provavelmente dois parquets em pastas separadas dentro de `data/staging/...`.
-- **Documentação:** o reviewer vai esperar uma menção explícita ao star schema no README e/ou `schema.yml`.
+- **dbt (gold):** dois models — `models/br_mma_unidades_conservacao/unidade_conservacao.sql` (SELECT direto da silver) e `models/br_mma_unidades_conservacao/uc_municipio.sql` (UNNEST + JOIN com seed `municipio`).
+- **`schema.yml`:** testes `unique` + `not_null` em `id_uc` no model principal. Testes `not_null` + `relationships` em `id_municipio` no model `uc_municipio`. Teste de chave composta `(id_uc, id_municipio)` única na ponte.
+- **Tratamento (sub-projeto #2):** **sem bifurcação.** Pipeline linear no `df`. Em vez de explodir e separar em duas tabelas, uma função `build_municipios_struct(df)` transforma a coluna `Municípios Abrangidos` (string com separador) em `ARRAY[STRUCT(nome, sigla_uf, nome_norm)]`. A normalização do nome (`nome_norm`) é pré-computada em Python e armazenada no struct — ver [[normalizacao-nomes]] — para que o JOIN no dbt seja simples comparação de igualdade, sem precisar `unaccent`/`icu` em DuckDB.
+- **Output do tratamento:** **um único parquet** em `data/staging/br_mma_unidades_conservacao/unidade_conservacao/`. Não há mais parquet `uc_municipio` na silver.
+- **Seed IBGE:** precisa ter `nome_norm` pré-computado (no CSV ou via model intermediário em dbt). Ver [[diretorio-ibge]].
+- **Documentação:** o reviewer vai esperar menção explícita ao star schema na gold (no `schema.yml`).
 
 ---
 

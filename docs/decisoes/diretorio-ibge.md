@@ -82,12 +82,24 @@ A pergunta: **de onde puxar essa tabela?**
 
 - **Bootstrap:**
   1. `uv add basedosdados` (temporário).
-  2. Script ou notebook: `bd.read_table('br_bd_diretorios_brasil', 'municipio').to_csv('dbt/seeds/municipio.csv', index=False)`.
+  2. Script ou notebook: `bd.read_table('br_bd_diretorios_brasil', 'municipio').to_csv('dbt/seeds/municipio.csv', index=False)`. Reduz pra `(id_municipio, nome, sigla_uf)` antes de salvar.
   3. `uv remove basedosdados`.
   4. Commitar `dbt/seeds/municipio.csv` no git.
-- **dbt:** o `municipio.csv` é carregado por `dbt seed`. No `Makefile` o alvo `dbt-deps` já existe — pode adicionar `dbt seed` ao `setup` ou fazer parte do `dbt-build`.
-- **Tipos do seed:** declarar `id_municipio` como `STRING` no `_seeds.yml` (não inferir como int — vai contra o style guide BD).
+- **dbt:** o `municipio.csv` é carregado por `dbt seed`. Alvo `dbt-seed` já existe no `Makefile`, e `dbt-build` encadeia seed antes de run.
+- **Tipos do seed:** declarar `id_municipio`, `nome` e `sigla_uf` como `varchar` no `_seeds.yml` (não inferir como int — vai contra o style guide BD).
 - **Tamanho:** ~5.570 linhas × 3 colunas relevantes ≈ ~200 KB. Não polui o git.
+- **`nome_norm` pro join CNUC ↔ IBGE:** o seed mantém só `nome` (forma canônica). A coluna normalizada `nome_norm` (sem acento, lowercase, etc.) é produzida via **model dbt intermediário** `municipio_norm`, com algo como:
+
+  ```sql
+  SELECT
+      id_municipio,
+      nome,
+      sigla_uf,
+      lower(strip_accents(nome)) AS nome_norm
+  FROM {{ ref('municipio') }}
+  ```
+
+  O `strip_accents` (ou equivalente — `accent_remove`, `unaccent`, depende da função suportada pela versão do DuckDB) precisa estar disponível. Se não estiver, alternativa: pré-computar `nome_norm` direto no CSV do seed (computado uma vez no bootstrap em Python via `unidecode`, salvo no `dbt/seeds/municipio.csv` como 4ª coluna). A função de normalização tem que ser a **mesma** que o lado CNUC usa (ver [[normalizacao-nomes]]) — não pode divergir.
 - **Refresh manual:** se o IBGE publicar nova divisão (próximo censo), rodar o bootstrap de novo. Registrar em commit dedicado.
 
 ---

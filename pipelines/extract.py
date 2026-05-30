@@ -9,8 +9,8 @@ def get_data() -> pl.DataFrame:
     decimal_comma=True,
     schema_overrides={
         "ID_UC": pl.Utf8,
-        "CÓDIGO UC": pl.Utf8,
-        "CÓDIGO WDPA": pl.Utf8
+        "Código UC": pl.Utf8,
+        "Código WDPA": pl.Utf8
     })
     
     return df    

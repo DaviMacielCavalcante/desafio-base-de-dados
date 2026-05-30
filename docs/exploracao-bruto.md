@@ -32,9 +32,13 @@ Notas consolidadas da sessão de reconnaissance sobre o arquivo bruto do **Cadas
 
 O `dicionario-de-dados-unidades-de-conservacao.pdf` documenta **~13 colunas** apenas. O CSV tem **43**. Logo, há ~30 colunas no CSV **não-documentadas oficialmente** — derivadas, auxiliares, ou flags internas do MMA.
 
-### Separador de multi-valor confirmado: **vírgula (`,`)**
+### Separador de multi-valor: **depende da coluna**
 
-Direto do dicionário:
+> **Correção empírica (2026-05-29):** o dicionário generaliza "separados por vírgula", mas a inspeção do dado real mostra separadores **diferentes** por coluna:
+> - **`UF`** → vírgula (`,`). Confirmado: 38 linhas com `,`, ex `"RS, SC"`, `"CE, PE, PI"`. ✅ dicionário bate.
+> - **`Municípios Abrangidos`** → `" - "` (espaço-hífen-espaço). **0 linhas com vírgula, 587 com `" - "`**, ex `"CAMANDUCAIA (MG) - EXTREMA (MG)"`. ❌ dicionário **não** bate.
+
+Direto do dicionário (texto original, mantido como registro do que a fonte afirma — ver correção acima para o que o dado realmente traz):
 - **UF:** *"Quando há mais de uma UF abrangida os valores são separados por vírgula."* → UF **também é multi-valor** (UCs que cruzam estados).
 - **Municípios Abrangidos:** *"Quando há mais de um município os valores são separados por vírgula."*
 
@@ -190,7 +194,10 @@ pl.read_csv(
 
 ### Outras notas
 
-- **`Sem informação.`** aparece como sentinel de "vazio textual" (em `Outros atos legais`) — precisa virar `NULL` no tratamento.
+- **`Sem informação.`** aparece como sentinel de "vazio textual" — precisa virar `NULL` no tratamento. Distribuição confirmada na exploração:
+  - `Outros atos legais`: **2.424 ocorrências (~70%)** — significam UCs que não tiveram alteração legal posterior à criação. Nulo legítimo.
+  - `Código WDPA`: **123 ocorrências (~4%)** — UCs sem registro no World Database on Protected Areas. Nulo legítimo.
+  - Em ambos os casos, é dado válido (não corrupção). Documentar no `schema.yml` da tabela final.
 - **Nomes de coluna com caracteres especiais** (`Fonte da Área: (1 = SHP, 0 = Ato legal)`, `Município Costeiro + Área Marinha`) vão precisar de renomeação cuidadosa pro snake_case.
 - **Booleanas 0/1** identificadas: `Fonte da Área`, `PI`, `US`, `Mar Territorial`, `Município Costeiro`, `Município Costeiro + Área Marinha`. No style guide BD, `int64` 0/1 é o padrão pra booleanas — não precisa converter pra `bool`.
 - **Candidatos a chave primária:** `Código UC` (formato `0000.00.<seq>`) parece o mais canônico do MMA — confirmar unicidade na Fase D.1. `ID_UC` também candidato **depois** de corrigir tipo.
@@ -211,16 +218,17 @@ Não foram encontradas duplicatas relevantes na chave natural durante a explora�
 
 Coluna `Municípios Abrangidos`, formato por célula:
 - Singular: `"NOME EM CAIXA ALTA (SIGLA_UF)"` (ex: `"CARAGUATATUBA (SP)"`).
-- Múltiplos municípios: separados por **vírgula** (`,`), segundo o dicionário oficial.
+- Múltiplos municípios: separados por `" - "` (espaço-hífen-espaço), ex `"CAMANDUCAIA (MG) - EXTREMA (MG)"`. **(O dicionário diz "vírgula", mas o dado real usa `" - "` — ver correção empírica no topo deste doc.)**
 - A sigla entre parênteses precisa ser **separada** do nome no tratamento (regex `r'\s*\([A-Z]{2}\)$'` ou split por `(`).
+- Nomes com hífen interno (`SAPUCAÍ-MIRIM`, `VARRE-SAI`, `PARIQUERA-AÇU`) **não** quebram o `split(" - ")` porque o hífen interno não tem espaços em volta.
 
 ### D.4 UCs sem município (marinhas)
 
-A explorar quantitativamente no tratamento. Pelo dicionário e pela coluna `Área Marinha`, são identificáveis. **Decisão fechada (ver §0 abaixo):** uma coluna `indicador_marinha` na tabela principal e UCs marinhas **não entram** na tabela ponte `uc_municipio`.
+**Correção empírica (2026-05-29):** **não existe UC sem município** neste dataset. `Municípios Abrangidos` tem 0 nulls e 0 vazios, e as 229 UCs com `Mar Territorial = Sim` trazem todas municípios costeiros. A flag `indicador_marinha` continua na principal (derivada de `Mar Territorial`/`Área Marinha`), mas como atributo analítico — UCs marinhas **entram** normalmente na ponte `uc_municipio` com seus municípios costeiros. Ver [[ucs-marinhas]] (decisão revisada).
 
 ### D.5 UCs em múltiplos municípios
 
-A quantificar no tratamento via `pl.col("Municípios Abrangidos").str.contains(",")`. Padrão de separador (vírgula) confirmado pelo dicionário.
+A quantificar no tratamento via `pl.col("Municípios Abrangidos").str.contains(" - ")` (587 linhas multi-município). Separador `" - "` confirmado no dado real.
 
 ### D.6 `sigla_uf`
 
