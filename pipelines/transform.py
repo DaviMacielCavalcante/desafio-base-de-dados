@@ -1,16 +1,30 @@
 from pathlib import Path
-from pipelines.extract import get_data
-from unidecode import unidecode
-import polars as pl
 
-STR_COLUMNS = ['Código UC','Nome da UC','Esfera Administrativa',
-'Categoria de Manejo','Categoria IUCN','UF',
-'Ato Legal de Criação','Outros atos legais','Municípios Abrangidos', 
-'Bioma declarado', 'Grupo', "Programa/Projeto", 
-"Sítios do Patrimônio Mundial", "Sítios Ramsar","Mosaico", 
-'Código WDPA',"Órgão Gestor"]
-INT_COLUMNS = ['Ano de Criação',
-    'Ano do ato legal mais recente',
+import polars as pl
+from unidecode import unidecode
+
+STR_COLUMNS = [
+    "Código UC",
+    "Nome da UC",
+    "Esfera Administrativa",
+    "Categoria de Manejo",
+    "Categoria IUCN",
+    "UF",
+    "Ato Legal de Criação",
+    "Outros atos legais",
+    "Municípios Abrangidos",
+    "Bioma declarado",
+    "Grupo",
+    "Programa/Projeto",
+    "Sítios do Patrimônio Mundial",
+    "Sítios Ramsar",
+    "Mosaico",
+    "Código WDPA",
+    "Órgão Gestor",
+]
+INT_COLUMNS = [
+    "Ano de Criação",
+    "Ano do ato legal mais recente",
     "Fonte da Área: (1 = SHP, 0 = Ato legal)",
     "PI",
     "US",
@@ -18,7 +32,7 @@ INT_COLUMNS = ['Ano de Criação',
     "Município Costeiro",
     "Município Costeiro + Área Marinha",
     "Plano de Manejo",
-    "Conselho Gestor"
+    "Conselho Gestor",
 ]
 FLOAT_COLUMNS = [
     "Área soma biomas",
@@ -26,20 +40,14 @@ FLOAT_COLUMNS = [
     "Área Ato Legal de Criação",
     "Área Marinha",
     "% Além da linha de costa",
-    'Amazônia',
-    'Caatinga',
-    'Cerrado',
-    'Mata Atlântica',
-    'Pampa',
-    'Pantanal'
+    "Amazônia",
+    "Caatinga",
+    "Cerrado",
+    "Mata Atlântica",
+    "Pampa",
+    "Pantanal",
 ]
-DROP_COLUMNS = [
-    'ID_UC',
-    "Recortes (ha)",
-    "Bioma Área (ha)",
-    "Amazônia Legal",
-    "Informações Gerais"
-]
+DROP_COLUMNS = ["ID_UC", "Recortes (ha)", "Bioma Área (ha)", "Amazônia Legal", "Informações Gerais"]
 RENAME_MAP = {
     "Código UC": "id_uc",
     "Nome da UC": "nome_uc",
@@ -81,13 +89,28 @@ RENAME_MAP = {
     "Código WDPA": "codigo_wdpa",
 }
 REQUIRED_COLUMNS = [
-"Código UC", "Nome da UC", "Esfera Administrativa",
-"Categoria de Manejo", "Categoria IUCN", "UF",
-"Ano de Criação", "Ato Legal de Criação", "Outros atos legais",
-"Municípios Abrangidos", "Plano de Manejo", "Conselho Gestor",
-"Área soma biomas", "Área soma Biomas Continental", "Área Ato Legal de Criação",
-"Amazônia", "Caatinga", "Cerrado", "Mata Atlântica",
-"Pampa", "Pantanal", "Área Marinha",
+    "Código UC",
+    "Nome da UC",
+    "Esfera Administrativa",
+    "Categoria de Manejo",
+    "Categoria IUCN",
+    "UF",
+    "Ano de Criação",
+    "Ato Legal de Criação",
+    "Outros atos legais",
+    "Municípios Abrangidos",
+    "Plano de Manejo",
+    "Conselho Gestor",
+    "Área soma biomas",
+    "Área soma Biomas Continental",
+    "Área Ato Legal de Criação",
+    "Amazônia",
+    "Caatinga",
+    "Cerrado",
+    "Mata Atlântica",
+    "Pampa",
+    "Pantanal",
+    "Área Marinha",
 ]
 ORDERED_COLUMNS = [
     # Zona 1: chaves (ordem descendente de abrangência)
@@ -137,81 +160,80 @@ ORDERED_COLUMNS = [
     "area_ato_legal_criacao",
 ]
 
+
 def validate_schema(df: pl.DataFrame) -> None:
-    
+
     missing = [col for col in REQUIRED_COLUMNS if col not in df.columns]
-    
+
     if len(missing) > 0:
         raise ValueError(f"Colunas não encontradas: {missing}")
-    
+
+
 def check_duplicates_uc_codes(df: pl.DataFrame) -> None:
-    
+
     duplicates = df.group_by("Código UC").len().filter(pl.col("len") > 1)
-    
+
     if duplicates.height > 0:
         raise ValueError(f"Duplicated data found! {duplicates.height} found!")
-    
+
+
 def drop_null_or_empty_rows(df: pl.DataFrame) -> pl.DataFrame:
-    
+
     df_filtered = df = df.filter(pl.col("Código UC").is_not_null())
 
-    return df_filtered   
+    return df_filtered
+
 
 def drop_columns(df):
     return df.drop(DROP_COLUMNS)
 
+
 def cast_columns(df: pl.DataFrame) -> pl.DataFrame:
-    
+
     expressions = []
     for col in df.columns:
         if col in STR_COLUMNS:
             expressions.append(pl.col(col).cast(pl.String))
         elif col in INT_COLUMNS:
             if df[col].dtype == pl.String:
-                expressions.append(
-                    pl.col(col).replace_strict({"Sim": 1, "Não": 0}).cast(pl.Int64)
-                )
+                expressions.append(pl.col(col).replace_strict({"Sim": 1, "Não": 0}).cast(pl.Int64))
             else:
                 expressions.append(pl.col(col).cast(pl.Int64))
         elif col in FLOAT_COLUMNS:
             if df[col].dtype == pl.String:
                 expressions.append(
-                    pl.col(col).str.replace_all(r"\.", "")
-                            .str.replace(",", ".")
-                            .cast(pl.Float64)
+                    pl.col(col).str.replace_all(r"\.", "").str.replace(",", ".").cast(pl.Float64)
                 )
             else:
                 expressions.append(pl.col(col).cast(pl.Float64))
 
+    return df.with_columns(expressions)
 
-    return df.with_columns(expressions)   
 
 def normalize_categoricals(df: pl.DataFrame) -> pl.DataFrame:
-    return df.with_columns(
-        pl.col("Categoria IUCN").str.replace("Category ", "")
-    )
-    
+    return df.with_columns(pl.col("Categoria IUCN").str.replace("Category ", ""))
+
+
 def normalize_sentinels(df: pl.DataFrame) -> pl.DataFrame:
     cols_with_sentinel = ["Outros atos legais", "Código WDPA"]
-    return df.with_columns([
-        pl.col(c).replace("Sem informação.", None)
-        for c in cols_with_sentinel
-    ])
-    
+    return df.with_columns([pl.col(c).replace("Sem informação.", None) for c in cols_with_sentinel])
+
+
 def trim_strings(df: pl.DataFrame) -> pl.DataFrame:
-    return df.with_columns([
-        pl.col(c).str.strip_chars() for c in STR_COLUMNS
-    ])
-    
+    return df.with_columns([pl.col(c).str.strip_chars() for c in STR_COLUMNS])
+
+
 def rename_columns(df: pl.DataFrame) -> pl.DataFrame:
     return df.rename(RENAME_MAP)
 
+
 def normalize_municipio(s: str | None) -> str | None:
-    """Chave de match — lowercase + sem acentos. 
+    """Chave de match — lowercase + sem acentos.
     Mesma função aplicada nos dois lados do join (CNUC e seed IBGE)."""
     if s is None:
         return None
     return unidecode(s).lower()
+
 
 def build_municipios_struct(df: pl.DataFrame) -> pl.DataFrame:
     """Transforma 'Municípios Abrangidos' (string com separador ' - ') em
@@ -222,28 +244,34 @@ def build_municipios_struct(df: pl.DataFrame) -> pl.DataFrame:
         .str.split(" - ")
         .list.eval(
             pl.struct(
-                nome=pl.element()
-                    .str.strip_chars()
-                    .str.replace(r"\s*\([A-Z]{2}\)\s*$", ""),
-                sigla_uf=pl.element()
-                    .str.extract(r"\(([A-Z]{2})\)\s*$"),
+                nome=pl.element().str.strip_chars().str.replace(r"\s*\([A-Z]{2}\)\s*$", ""),
+                sigla_uf=pl.element().str.extract(r"\(([A-Z]{2})\)\s*$"),
                 nome_norm=pl.element()
-                    .str.strip_chars()
-                    .str.replace(r"\s*\([A-Z]{2}\)\s*$", "")
-                    .map_elements(normalize_municipio, return_dtype=pl.String),
+                .str.strip_chars()
+                .str.replace(r"\s*\([A-Z]{2}\)\s*$", "")
+                .map_elements(normalize_municipio, return_dtype=pl.String),
             )
         )
     )
-    
+
+
 def reorder_columns(df: pl.DataFrame) -> pl.DataFrame:
     return df.select(ORDERED_COLUMNS)
 
+
 def transform(df: pl.DataFrame) -> Path:
-    
+
     ROOT = Path(__file__).resolve().parents[1]
-    
-    STAGING_PATH = ROOT / "data"/ "staging" / "br_mma_unidades_conservacao"/ "unidade_conservacao" / "unidade_conservacao.parquet"
-    
+
+    STAGING_PATH = (
+        ROOT
+        / "data"
+        / "staging"
+        / "br_mma_unidades_conservacao"
+        / "unidade_conservacao"
+        / "unidade_conservacao.parquet"
+    )
+
     validate_schema(df)
     check_duplicates_uc_codes(df)
     df_dropped_cols = drop_columns(df)
@@ -255,8 +283,8 @@ def transform(df: pl.DataFrame) -> Path:
     df_municipios_struct_build = build_municipios_struct(df_categoricals_normalized)
     df_renamed_columns = rename_columns(df_municipios_struct_build)
     df_reordered_columns = reorder_columns(df_renamed_columns)
-    
+
     STAGING_PATH.parent.mkdir(parents=True, exist_ok=True)
     df_reordered_columns.write_parquet(STAGING_PATH)
-    
+
     return STAGING_PATH
