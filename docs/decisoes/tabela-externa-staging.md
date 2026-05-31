@@ -2,7 +2,7 @@
 
 **Data:** 2026-05-30
 **Sub-projeto afetado:** #4 (modelo dbt)
-**Status:** Implementado — sub-decisões (bucket por `target.name`, `nome_norm` no SQL) resolvidas em 2026-05-30. Camada gold dbt construída e com 22 testes verdes.
+**Status:** Implementado — sub-decisões (bucket por `target.name`, `nome_norm` no SQL) resolvidas em 2026-05-30. Camada gold dbt construída e com 29 testes verdes.
 
 ---
 
@@ -165,6 +165,6 @@ env setada corretamente fora do dbt.
 
 - `REVISAO.md` §2 — tabela externa em `<dataset>_staging`.
 - [dbt-duckdb — external sources](https://github.com/duckdb/dbt-duckdb#reading-from-external-files).
-- [[granularidade]] — os dois models gold que consomem esta source.
+- [[granularidade]] — os models gold que consomem esta source.
 - [[estrategia-atualizacao]] — materialização `table` (overwrite) na gold.
 - [[diretorio-ibge]] — seed que o `uc_municipio` cruza.

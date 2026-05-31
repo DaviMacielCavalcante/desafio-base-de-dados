@@ -11,6 +11,7 @@ dependencies = [
     "duckdb>=1.5.3",
     "polars>=1.41.1",
     "prefect>=3.7.2",
+    "prefect-dbt>=0.7.24",
     "pyarrow>=24.0.0",
     "python-dotenv>=1.2.2",
     "requests>=2.34.2",

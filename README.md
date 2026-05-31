@@ -61,10 +61,39 @@ Rode `make help` pra lista completa. Os mais usados:
 | --- | --- |
 | `make setup` | Sobe MinIO + `uv sync` + `dbt deps` |
 | `make up` / `make down` | Liga/desliga MinIO |
-| `make pipe` | Roda o flow Prefect |
+| `make pipe` | Roda o flow Prefect **uma vez** (one-shot) |
+| `make serve` | Registra o deployment e agenda o flow (ver §Agendamento) |
 | `make dbt-build` | `dbt seed` + `dbt run` + `dbt test` (target dev) |
 | `make lint` / `make format` | Check / auto-fix com ruff |
 | `make clean` | Limpa `data/*.duckdb` e `data/*.parquet` |
+
+## Agendamento (schedule)
+
+`make pipe` roda o flow **uma vez** contra um servidor Prefect efêmero. Para
+**agendar** (rodar na cadência definida no `serve()`, ex. semanal), o Prefect
+precisa de um **servidor persistente** rodando o scheduler — o efêmero não agenda.
+
+São **dois processos**, em dois terminais:
+
+```bash
+# Terminal 1 — sobe o servidor Prefect (API + scheduler + UI em :4200). Deixa rodando.
+prefect server start
+
+# Terminal 2 — aponta o cliente pro servidor e serve o deployment
+export PREFECT_API_URL=http://127.0.0.1:4200/api
+make serve
+```
+
+Com isso o scheduler dispara o flow na cadência configurada; acompanhe os runs no
+terminal 2 ou na UI em <http://127.0.0.1:4200>.
+
+> **Por que o `export` só na sessão do `serve`** (e não no `.env`): se
+> `PREFECT_API_URL` for permanente, **todo** comando — inclusive `make pipe` —
+> passa a exigir o servidor no ar. Mantendo o `export` local ao terminal do
+> `serve`, o `make pipe` continua independente (usa o efêmero).
+>
+> Para produção real seria um work-pool + worker dedicado; para o schedule
+> demonstrável do desafio, servidor + `flow.serve()` basta.
 
 ## Apontar para outros buckets
 
@@ -150,17 +179,17 @@ docs/             # specs e plans dos sub-projetos
 
 ## Limitações conhecidas (estado atual)
 
-Este repo está em **sub-projeto #4 / 6**. O que **já existe**:
+Este repo está em **sub-projeto #5 / 6**. O que **já existe**:
 
 - [x] Extração + tratamento + join IBGE (sub-projeto #2)
 - [x] Upload e tabela externa em staging (sub-projeto #3)
 - [x] Modelo dbt + testes obrigatórios + diferenciais do §4 (sub-projeto #4)
+- [x] Flow Prefect (extract→transform→upload→dbt) + gate dev→prod + schedule (sub-projeto #5)
 
 O que **ainda não existe**:
 
-- [ ] Flow Prefect + gate dev→prod + schedule (sub-projeto #5)
-- [ ] CI, observabilidade, max_date metadata (sub-projeto #6)
+- [ ] CI, observabilidade, testes unitários do tratamento, max_date metadata (sub-projeto #6)
 
-> `make pipe` hoje roda extract → transform → upload do parquet pro bucket dev,
-> mas **ainda não é um flow Prefect** nem invoca o dbt — isso é o sub-projeto #5.
-> A camada dbt roda via `make dbt-build` (seed + run + test, target dev).
+> `make pipe` roda o flow Prefect fim-a-fim: extract → transform → upload(dev) →
+> dbt seed/run/test(dev) → **gate** → promote(dev→prod) → dbt seed/run(prod). O
+> agendamento é via `make serve` (ver §Agendamento).

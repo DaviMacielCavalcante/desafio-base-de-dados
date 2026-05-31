@@ -114,7 +114,7 @@ Implementação em dbt: `materialized='table'` (default).
 
 Implementação em Python (sub-projeto #2): tratamento puramente funcional — mesma entrada → mesma saída, sem timestamp em nome de arquivo, sem aleatoriedade.
 
-Implementação em flow (sub-projeto #5): sequência `download → trata → upload → dbt run → dbt test`. Sem comparação com versão anterior, sem lógica de "merge".
+Implementação em flow (sub-projeto #5): sequência `extract → transform → upload(dev) → dbt seed(dev) → dbt run(dev) → dbt test(dev) → [gate] → promote(dev→prod) → dbt seed(prod) → dbt run(prod)`. Sem comparação com versão anterior, sem lógica de "merge" — cada run reescreve do snapshot atual. O `dbt seed` em cada target é necessário porque dev e prod são warehouses DuckDB separados; é idempotente (trunca e recarrega).
 
 ---
 
@@ -136,6 +136,15 @@ Implementação em flow (sub-projeto #5): sequência `download → trata → upl
 - Se um dia quisermos histórico (ex: "quantas UCs existiam em 2024?"), a única opção será (c) snapshot, e seria uma refatoração maior. Por enquanto não há demanda.
 
 ---
+
+## Pendência de refatoração — orquestração #5 (2026-05-30)
+
+**Possível consolidação via `dbt build`.** Hoje o flow tem tasks separadas `dbt seed` + `dbt run` + `dbt test` por target, o que ficou repetitivo (dev e prod). O `dbt build` faz **seed + run + test na ordem do DAG, num comando só**, e levanta exceção se um teste falhar — ou seja, embute o gate. Refatoração candidata:
+
+- **dev:** trocar `seed(dev) → run(dev) → test(dev)` por um único `dbt build --target dev` (semeia, materializa, testa, com gate embutido).
+- **prod:** manter `seed(prod) → run(prod)` (prod não re-testa, já passou o gate em dev).
+
+Mantido o caminho atual (tasks separadas) por ora — é mais explícito e demonstra o gate "run → test → promote" passo a passo, que é o que o `REVISAO.md` §2/§3 quer ver. A consolidação é melhoria de código (menos duplicação), não de comportamento. Decidir quando o flow estiver fechado.
 
 ## Quando reconsiderar
 

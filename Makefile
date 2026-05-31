@@ -47,6 +47,9 @@ format:
 	uv run ruff format .
 	uv run ruff check . --fix 
 
+serve:
+	uv run python -c "from pipelines.pipe import serve; serve()"
+
 dbt-deps:
 	uv run dbt deps $(DBT_FLAGS)
 

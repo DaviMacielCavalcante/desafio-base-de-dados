@@ -101,7 +101,7 @@ Estrutura:
 
 ## Consequências / implicações
 
-- **dbt (gold):** dois models — `models/br_mma_unidades_conservacao/unidade_conservacao.sql` (SELECT direto da staging) e `models/br_mma_unidades_conservacao/uc_municipio.sql` (UNNEST + JOIN com seed `municipio`). Ambos consomem a tabela externa via `source(...)` — ver [[tabela-externa-staging]].
+- **dbt (gold):** três models (arquivos no padrão `<dataset>__<tabela>.sql` com `alias` pra tabela curta) — `..__unidade_conservacao.sql` (SELECT da staging, sem as 6 colunas `area_<bioma>`), `..__uc_municipio.sql` (UNNEST + JOIN com seed `municipio`) e `..__uc_bioma.sql` (UNPIVOT das áreas por bioma). Todos consomem a tabela externa via `source(...)` — ver [[tabela-externa-staging]] e o adendo `uc_bioma` abaixo.
 - **`schema.yml`:** testes `unique` + `not_null` em `id_uc` no model principal. Testes `not_null` + `relationships` em `id_municipio` no model `uc_municipio`. Teste de chave composta `(id_uc, id_municipio)` única na ponte.
 - **Tratamento (sub-projeto #2):** **sem bifurcação.** Pipeline linear no `df`. Em vez de explodir e separar em duas tabelas, uma função `build_municipios_struct(df)` transforma a coluna `Municípios Abrangidos` (string com separador) em `ARRAY[STRUCT(nome, sigla_uf, nome_norm)]`. A normalização do nome (`nome_norm`) é pré-computada em Python e armazenada no struct — ver [[normalizacao-nomes]] — para que o JOIN no dbt seja simples comparação de igualdade, sem precisar `unaccent`/`icu` em DuckDB.
 - **Output do tratamento:** **um único parquet** em `data/staging/br_mma_unidades_conservacao/unidade_conservacao/`. Não há mais parquet `uc_municipio` na silver.
@@ -143,8 +143,8 @@ livre, não normalizam limpo.
 
 ## Adendo: tabela `dicionario` (2026-05-30)
 
-Além das duas tabelas-modelo e do diretório `municipio`, o dataset ganhou uma
-quarta tabela: o **dicionário** (seed `dicionario.csv`), no padrão BD — uma única
+Além das três tabelas-modelo (`unidade_conservacao`, `uc_municipio`, `uc_bioma`)
+e do diretório `municipio`, o dataset tem o **dicionário** (seed `dicionario.csv`), no padrão BD — uma única
 tabela por base que mapeia `(id_tabela, nome_coluna, chave) → valor`.
 
 **Escopo decidido:** cobre **apenas as colunas `indicador_*`** da

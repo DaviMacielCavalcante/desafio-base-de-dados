@@ -1,5 +1,6 @@
-import os
 from botocore.exceptions import ClientError, EndpointConnectionError, ConnectionClosedError
+from pipelines.utils.client import get_s3_client
+import os 
 
 def ensure_bucket(s3, bucket: str, endpoint) -> None:
     """Cria o bucket se não existir. Distingue 'já existe' de 'MinIO fora do ar'."""
@@ -19,16 +20,20 @@ def ensure_bucket(s3, bucket: str, endpoint) -> None:
             raise
 
     
-def upload(s3, df_path, bucket, key, endpoint) -> str:
+def upload(df_path, bucket, key) -> str:
         
-    ensure_bucket(s3, bucket, endpoint)
+    MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")    
+        
+    s3 = get_s3_client()    
+        
+    ensure_bucket(s3, bucket, MINIO_ENDPOINT)
 
     try:
         s3.upload_file(Filename=str(df_path), Bucket=bucket, Key=key)
         print(f"Upload para s3://{bucket}/{key}")
     except (EndpointConnectionError, ConnectionClosedError) as e:
         raise ConnectionError(
-            f"MinIO inalcançável em {endpoint}. Rode `make up`."
+            f"MinIO inalcançável em {MINIO_ENDPOINT}. Rode `make up`."
         ) from e
     except ClientError as e:
         raise RuntimeError(f"Falha no upload pro MinIO: {e}") from e
@@ -37,3 +42,17 @@ def upload(s3, df_path, bucket, key, endpoint) -> str:
     print(f"Confirmado: Arquivo em s3://{bucket}/{key}")
     
     return f"s3://{bucket}/{key}"
+
+def promote_data(key, source_bucket, destiny_bucket):
+    
+    MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")    
+    
+    s3 = get_s3_client()
+    
+    ensure_bucket(s3=s3, bucket=destiny_bucket, endpoint=MINIO_ENDPOINT)
+    
+    s3.copy_object(
+        CopySource={'Bucket': source_bucket, 'Key': key},
+        Bucket=destiny_bucket,
+        Key=key
+    )
