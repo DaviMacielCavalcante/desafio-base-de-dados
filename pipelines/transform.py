@@ -162,7 +162,21 @@ ORDERED_COLUMNS = [
 
 
 def validate_schema(df: pl.DataFrame) -> None:
+    """Valida a presença das colunas obrigatórias no DataFrame bruto.
 
+    Compara as colunas de ``df`` contra ``REQUIRED_COLUMNS`` — o
+    conjunto mínimo para o tratamento downstream funcionar.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        DataFrame recém-lido do CSV CNUC.
+
+    Raises
+    ------
+    ValueError
+        Se ao menos uma coluna esperada não estiver presente.
+    """
     missing = [col for col in REQUIRED_COLUMNS if col not in df.columns]
 
     if len(missing) > 0:
@@ -170,7 +184,23 @@ def validate_schema(df: pl.DataFrame) -> None:
 
 
 def check_duplicates_uc_codes(df: pl.DataFrame) -> None:
+    """Verifica unicidade do ``Código UC`` no DataFrame bruto.
 
+    Failsafe contra um snapshot CNUC corrompido — o gate de ``unique``
+    no ``schema.yml`` cobre o mesmo na tabela materializada, mas é
+    melhor abortar antes do tratamento se a chave já vier quebrada
+    da fonte.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        DataFrame com a coluna ``Código UC``.
+
+    Raises
+    ------
+    ValueError
+        Se houver pelo menos uma linha com ``Código UC`` repetido.
+    """
     duplicates = df.group_by("Código UC").len().filter(pl.col("len") > 1)
 
     if duplicates.height > 0:
@@ -178,18 +208,68 @@ def check_duplicates_uc_codes(df: pl.DataFrame) -> None:
 
 
 def drop_null_or_empty_rows(df: pl.DataFrame) -> pl.DataFrame:
+    """Remove linhas em que ``Código UC`` é nulo.
 
+    Linhas sem código não têm como identificar a UC e quebrariam o
+    ``not_null`` em ``id_uc`` no dbt.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        DataFrame com colunas potencialmente nulas em ``Código UC``.
+
+    Returns
+    -------
+    pl.DataFrame
+        DataFrame filtrado.
+    """
     df_filtered = df = df.filter(pl.col("Código UC").is_not_null())
 
     return df_filtered
 
 
 def drop_columns(df):
+    """Descarta colunas redundantes ou ruidosas (``DROP_COLUMNS``).
+
+    Inclui ``ID_UC`` (chave duplicada de ``Código UC``), agregados
+    redundantes (``Bioma Área (ha)``, ``Amazônia Legal``), e colunas-
+    resumo que não fazem parte do schema final (``Recortes (ha)``,
+    ``Informações Gerais``).
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        DataFrame bruto.
+
+    Returns
+    -------
+    pl.DataFrame
+        DataFrame sem as colunas listadas em ``DROP_COLUMNS``.
+    """
     return df.drop(DROP_COLUMNS)
 
 
 def cast_columns(df: pl.DataFrame) -> pl.DataFrame:
+    """Converte cada coluna para o tipo final.
 
+    Usa a partição em ``STR_COLUMNS``, ``INT_COLUMNS`` e
+    ``FLOAT_COLUMNS`` e trata dois padrões idiossincráticos do CNUC:
+
+    - Indicadores binários armazenados como ``"Sim"``/``"Não"`` viram
+      ``1``/``0``.
+    - Floats no padrão brasileiro (``"1.234,56"``) viram ``Float64``
+      reais (ponto separador removido, vírgula → ponto).
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        DataFrame com colunas brutas — várias ainda em ``String``.
+
+    Returns
+    -------
+    pl.DataFrame
+        DataFrame com os tipos finais aplicados.
+    """
     expressions = []
     for col in df.columns:
         if col in STR_COLUMNS:
@@ -211,19 +291,80 @@ def cast_columns(df: pl.DataFrame) -> pl.DataFrame:
 
 
 def normalize_categoricals(df: pl.DataFrame) -> pl.DataFrame:
+    """Limpa o prefixo ``"Category "`` da coluna ``Categoria IUCN``.
+
+    O CNUC publica ``"Category II"`` etc.; mantemos apenas o numeral
+    romano para casar com os valores aceitos (``accepted_values``) no
+    ``schema.yml``.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        DataFrame com ``Categoria IUCN`` em formato bruto.
+
+    Returns
+    -------
+    pl.DataFrame
+        DataFrame com a categoria IUCN normalizada.
+    """
     return df.with_columns(pl.col("Categoria IUCN").str.replace("Category ", ""))
 
 
 def normalize_sentinels(df: pl.DataFrame) -> pl.DataFrame:
+    """Substitui sentinelas textuais (``"Sem informação."``) por ``None``.
+
+    Aplica em ``Outros atos legais`` e ``Código WDPA`` — colunas em que
+    o CNUC usa string fixa para representar ausência. Manter como
+    string atrapalha testes de ``not_null`` (que jamais falhariam).
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+
+    Returns
+    -------
+    pl.DataFrame
+        DataFrame com nulos reais no lugar das sentinelas.
+    """
     cols_with_sentinel = ["Outros atos legais", "Código WDPA"]
     return df.with_columns([pl.col(c).replace("Sem informação.", None) for c in cols_with_sentinel])
 
 
 def trim_strings(df: pl.DataFrame) -> pl.DataFrame:
+    """Remove whitespace nas pontas de todas as colunas de string.
+
+    Aplica ``str.strip_chars`` nas colunas listadas em ``STR_COLUMNS``.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+
+    Returns
+    -------
+    pl.DataFrame
+        Mesmo DataFrame com ``STR_COLUMNS`` saneadas.
+    """
     return df.with_columns([pl.col(c).str.strip_chars() for c in STR_COLUMNS])
 
 
 def rename_columns(df: pl.DataFrame) -> pl.DataFrame:
+    """Renomeia colunas conforme ``RENAME_MAP`` (style-guide BD).
+
+    De/para: ``"Código UC"`` → ``"id_uc"``, ``"UF"`` → ``"sigla_uf"``
+    etc. O alvo segue o style guide da Base dos Dados: ``snake_case``,
+    sem acentos, prefixo ``indicador_`` para booleanas e ``area_`` para
+    métricas de área.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        DataFrame com nomes originais do CNUC.
+
+    Returns
+    -------
+    pl.DataFrame
+        DataFrame com nomes finais.
+    """
     return df.rename(RENAME_MAP)
 
 
@@ -256,11 +397,45 @@ def build_municipios_struct(df: pl.DataFrame) -> pl.DataFrame:
 
 
 def reorder_columns(df: pl.DataFrame) -> pl.DataFrame:
+    """Reordena colunas segundo ``ORDERED_COLUMNS`` (zonas semânticas).
+
+    A ordem segue três zonas: (1) chaves identificadoras,
+    (2) qualitativas (categóricas, localização, indicadores),
+    (3) quantitativas (anos, proporções, áreas).
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+
+    Returns
+    -------
+    pl.DataFrame
+        Mesmo DataFrame na ordem canônica.
+    """
     return df.select(ORDERED_COLUMNS)
 
 
 def transform(df: pl.DataFrame) -> Path:
+    """Pipeline de tratamento end-to-end e escrita em parquet.
 
+    Orquestra a sequência ``validate → check_duplicates → drop_columns
+    → drop_null_rows → cast → trim → normalize_sentinels →
+    normalize_categoricals → build_municipios_struct → rename →
+    reorder`` e materializa o resultado em
+    ``data/staging/br_mma_unidades_conservacao/unidade_conservacao/``,
+    de onde o dbt lê via tabela externa.
+
+    Parameters
+    ----------
+    df : pl.DataFrame
+        DataFrame bruto do CSV CNUC (saída de
+        :func:`pipelines.extract.get_data`).
+
+    Returns
+    -------
+    Path
+        Caminho absoluto do parquet escrito.
+    """
     ROOT = Path(__file__).resolve().parents[1]
 
     STAGING_PATH = (

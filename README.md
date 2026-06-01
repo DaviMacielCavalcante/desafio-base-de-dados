@@ -107,6 +107,14 @@ MINIO_BUCKET_PROD=meu-bucket-prod
 
 Para usar **um MinIO/S3 remoto** (não o local), substitua `MINIO_ENDPOINT`, `MINIO_ROOT_USER` e `MINIO_ROOT_PASSWORD` pelas credenciais correspondentes.
 
+## Apontar para outro snapshot da fonte
+
+Para usar uma versão diferente do CNUC (ex.: snapshot mais antigo, para reproduzir um run), edite `SOURCE_URL` no `.env` com a URL do CSV correspondente — disponíveis no portal do MMA, listadas por semestre desde 2018:
+
+<https://dados.mma.gov.br/dataset/unidadesdeconservacao>
+
+Apague `data/raw/cnuc_*.csv` antes de rodar de novo para forçar o redownload.
+
 ## Modelo de dados
 
 Segue o estilo da BD (tabela achatada + diretórios + dicionário — **não** Kimball
@@ -196,7 +204,7 @@ sigla_uf`.
 ```
 pipelines/        # Python: extração, tratamento, flow Prefect
 dbt/              # projeto dbt (models, schema, profiles)
-data/             # gitignored: parquet temporário + warehouse_dev.duckdb + warehouse_prod.duckdb
+data/             # gitignored: raw CSV (cnuc_*.csv) + parquet temporário + warehouse_{dev,prod}.duckdb
 tests/            # pytest
 docs/             # specs e plans dos sub-projetos
 ```

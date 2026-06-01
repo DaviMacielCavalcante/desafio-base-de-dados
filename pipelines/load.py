@@ -23,7 +23,32 @@ def ensure_bucket(s3, bucket: str, endpoint) -> None:
 
 
 def upload(df_path, bucket, key) -> str:
+    """Faz upload do parquet local para o bucket informado.
 
+    Cria o bucket caso não exista (via :func:`ensure_bucket`), faz
+    ``upload_file`` e confirma com ``head_object``.
+
+    Parameters
+    ----------
+    df_path : str or pathlib.Path
+        Caminho local do parquet a subir.
+    bucket : str
+        Nome do bucket de destino.
+    key : str
+        Chave (caminho) dentro do bucket.
+
+    Returns
+    -------
+    str
+        URI ``s3://{bucket}/{key}`` do objeto criado.
+
+    Raises
+    ------
+    ConnectionError
+        Se o endpoint MinIO não estiver alcançável.
+    RuntimeError
+        Para outras falhas do client S3 (permissão, etc.).
+    """
     logger = get_run_logger()
 
     s3 = get_s3_client()
@@ -46,7 +71,21 @@ def upload(df_path, bucket, key) -> str:
 
 
 def promote_data(key, source_bucket, destiny_bucket):
+    """Copia o objeto ``key`` de um bucket para outro (server-side).
 
+    Promoção dev → prod do parquet de staging: usa ``copy_object`` do
+    MinIO, então o dado não trafega pelo cliente. Cria o bucket de
+    destino se necessário.
+
+    Parameters
+    ----------
+    key : str
+        Chave do objeto a promover (mesma em origem e destino).
+    source_bucket : str
+        Bucket de origem (tipicamente o de dev).
+    destiny_bucket : str
+        Bucket de destino (tipicamente o de prod).
+    """
     logger = get_run_logger()
 
     s3 = get_s3_client()
