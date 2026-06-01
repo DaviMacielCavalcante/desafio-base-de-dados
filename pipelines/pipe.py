@@ -69,7 +69,7 @@ def write_metadata():
 
     db_path = os.getenv("DUCKDB_PATH_PROD")
 
-    conn = connect(db_path, read_only=True)
+    conn = connect(db_path)
     schema = os.getenv("DBT_DATASET_PROD")
 
     try:
@@ -137,7 +137,7 @@ def main() -> None:
 
 def serve():
 
-    main.serve(name="desafio_uc_bd", interval=60)
+    main.serve(name="desafio_uc_bd", interval=360)
 
 
 if __name__ == "__main__":
