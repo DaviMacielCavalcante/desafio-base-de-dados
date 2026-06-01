@@ -29,6 +29,8 @@ make pipe
 
 O comando `make setup` faz: sobe MinIO, instala deps Python, instala packages dbt.
 
+O CSV bruto (`data/raw/cnuc_2026_03_atualizado.csv`) é **baixado automaticamente** pelo `extract.py` na primeira execução, a partir do `SOURCE_URL` do `.env` (default: snapshot CNUC de março/2026 no portal do MMA). O raw não é versionado no git — runs subsequentes reusam o arquivo em cache. Para forçar redownload, `rm data/raw/cnuc_*.csv`.
+
 Console do MinIO: http://localhost:9001 (login `minioadmin` / `minioadmin`).
 
 ## Variáveis de ambiente

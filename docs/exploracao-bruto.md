@@ -9,7 +9,7 @@ Notas consolidadas da sessão de reconnaissance sobre o arquivo bruto do **Cadas
 | Campo | Valor |
 |---|---|
 | Portal | https://dados.gov.br/dados/conjuntos-dados/unidadesdeconservacao |
-| URL direta do resource | Não disponível — download é disparado direto ao clicar no botão do portal. O `SOURCE_URL` no `.env` precisa apontar pro endpoint real (resolver na Fase A.2 do plano, antes de automatizar o download). |
+| URL direta do resource | `https://dados.mma.gov.br/dataset/44b6dc8a-dc82-4a84-8d95-1b0da7c85dac/resource/bab6d474-d38d-457c-9092-755f23ebdc76/download/cnuc_2026_03_atualizado.csv` — descoberta inspecionando o portal `dados.mma.gov.br` (espelho CKAN do `dados.gov.br`). Usada como default no `SOURCE_URL` (`.env.example`) e como fallback embutido em `pipelines/extract.py`. |
 | Órgão publicador | MMA — Ministério do Meio Ambiente |
 | Sistema de origem | CNUC (Cadastro Nacional de Unidades de Conservação) |
 | Nome do arquivo baixado | `cnuc_2026_03_atualizado.csv` |
