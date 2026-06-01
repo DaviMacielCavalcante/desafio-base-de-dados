@@ -1,6 +1,11 @@
+import json
 import os
+from datetime import UTC, datetime
+from pathlib import Path
 
-from prefect import flow, task
+from duckdb import connect
+from prefect import flow, get_run_logger, task
+from prefect.artifacts import create_markdown_artifact
 
 from pipelines.extract import get_data
 from pipelines.load import promote_data, upload
@@ -57,6 +62,51 @@ def dbt_run_prod():
     runner.invoke(["run", "--target", "prod"])
 
 
+@task
+def write_metadata():
+
+    logger = get_run_logger()
+
+    db_path = os.getenv("DUCKDB_PATH_PROD")
+
+    conn = connect(db_path, read_only=True)
+    schema = os.getenv("DBT_DATASET_PROD")
+
+    try:
+        row = conn.execute(
+            f"SELECT max(ano_ato_legal_mais_recente), count(*) FROM {schema}.unidade_conservacao"
+        ).fetchone()
+
+    finally:
+        conn.close()
+
+    metadata = {
+        "dataset_id": "br_mma_unidades_conservacao",
+        "table_id": "unidade_conservacao",
+        "max_date": row[0],
+        "n_rows": row[1],
+        "updated_at": datetime.now(UTC).isoformat(),
+    }
+
+    out = Path("data/metadata/br_mma_unidades_conservacao.json")
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    out.write_text(json.dumps(metadata, indent=2, ensure_ascii=False))
+
+    logger.info(f"Metadata escrita: max_date={metadata['max_date']}, linhas={metadata['n_rows']}")
+
+    create_markdown_artifact(
+        key="metadata-unidade-conservacao",
+        markdown=(
+            f"# Metadata — unidade_conservacao\n\n"
+            f"- **max_date** (ano do ato legal mais recente): {metadata['max_date']}\n"
+            f"- **linhas**: {metadata['n_rows']}\n"
+            f"- **atualizado em**: {metadata['updated_at']}\n"
+        ),
+    )
+
+
 @flow
 def main() -> None:
     STAGING_KEY = (
@@ -82,6 +132,7 @@ def main() -> None:
 
     dbt_seed("prod")
     dbt_run_prod()
+    write_metadata()
 
 
 def serve():
