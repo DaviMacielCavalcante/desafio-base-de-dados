@@ -167,6 +167,22 @@ O default ortodoxo é `~/.dbt/profiles.yml` (fora do repo). Optei por incluir no
 
 **A definir no sub-projeto #5 (Prefect flow).** Candidatas: overwrite full (mais simples, dado o volume ~3.4k UCs), snapshot dbt (preserva histórico), incremental por chave. Decisão será documentada aqui após brainstorm específico.
 
+### Particionamento / clustering
+
+Não particiono a tabela. Em BigQuery (stack real da BD) o candidato natural seria
+particionar/clusterizar por `sigla_uf` — a coluna de filtro mais provável em consultas
+por estado. Mas duas razões tornam isso irrelevante aqui:
+
+- **Volume:** ~3.4k linhas. Particionamento existe para podar varreduras em tabelas
+  grandes; nesse tamanho o ganho é nulo e só adiciona complexidade.
+- **Engine:** DuckDB não tem particionamento de tabela no mesmo sentido do BigQuery
+  (a poda dele vem de formato colunar + filtros sobre Parquet, não de partições
+  declaradas). Replicar o conceito do BQ aqui seria artificial.
+
+Se a stack migrasse para BigQuery e o volume crescesse (ex.: histórico anual por
+snapshot), o ponto de partida seria `PARTITION BY` numa coluna de data e `CLUSTER BY
+sigla_uf`.
+
 ## Layout
 
 ```
