@@ -64,7 +64,9 @@ Rode `make help` pra lista completa. Os mais usados:
 | `make pipe` | Roda o flow Prefect **uma vez** (one-shot) |
 | `make serve` | Registra o deployment e agenda o flow (ver §Agendamento) |
 | `make dbt-build` | `dbt seed` + `dbt run` + `dbt test` (target dev) |
+| `make test` | Testes unitários do tratamento (pytest) |
 | `make lint` / `make format` | Check / auto-fix com ruff |
+| `make typecheck` | Checagem de tipos com mypy |
 | `make clean` | Limpa `data/*.duckdb` e `data/*.parquet` |
 
 ## Agendamento (schedule)
@@ -165,7 +167,14 @@ O default ortodoxo é `~/.dbt/profiles.yml` (fora do repo). Optei por incluir no
 
 ### Estratégia de atualização
 
-**A definir no sub-projeto #5 (Prefect flow).** Candidatas: overwrite full (mais simples, dado o volume ~3.4k UCs), snapshot dbt (preserva histórico), incremental por chave. Decisão será documentada aqui após brainstorm específico.
+**Full refresh com overwrite** — em dbt, `materialized='table'` (default): cada run apaga e reescreve a tabela a partir do snapshot atual da fonte. Justificativa:
+
+- **Volume desprezível** (~3.4k linhas) — custo de reprocessar é nulo.
+- **Brief pede "status mais recente"**, não série histórica — não há demanda por histórico de mudanças.
+- **Idempotência trivial**: o tratamento Python é determinístico (mesmo input → mesma saída, sem `datetime.now()` em coluna nem ordenação não-determinística), então rodar a pipeline N vezes converge pra mesma tabela.
+- **Erros não acumulam**: uma run com lixo é limpa pela seguinte.
+
+Descartadas: append incremental (não detecta mudança/deleção — quebra "status mais recente"), snapshot SCD2 (overkill, sem demanda por histórico), merge por chave (mais complexo, ganho zero no volume atual). Análise completa em [`docs/decisoes/estrategia-atualizacao.md`](docs/decisoes/estrategia-atualizacao.md).
 
 ### Particionamento / clustering
 
@@ -193,19 +202,16 @@ tests/            # pytest
 docs/             # specs e plans dos sub-projetos
 ```
 
-## Limitações conhecidas (estado atual)
+## Estado do projeto
 
-Este repo está em **sub-projeto #5 / 6**. O que **já existe**:
+Todos os sub-projetos (#1–#6) e os diferenciais do §7 estão entregues:
 
 - [x] Extração + tratamento + join IBGE (sub-projeto #2)
 - [x] Upload e tabela externa em staging (sub-projeto #3)
 - [x] Modelo dbt + testes obrigatórios + diferenciais do §4 (sub-projeto #4)
 - [x] Flow Prefect (extract→transform→upload→dbt) + gate dev→prod + schedule (sub-projeto #5)
-
-O que **ainda não existe**:
-
-- [ ] CI, observabilidade, testes unitários do tratamento, max_date metadata (sub-projeto #6)
+- [x] Testes unitários, CI (GitHub Actions) + pre-commit, `max_date`/metadata, logs estruturados, nota de particionamento (sub-projeto #6)
 
 > `make pipe` roda o flow Prefect fim-a-fim: extract → transform → upload(dev) →
-> dbt seed/run/test(dev) → **gate** → promote(dev→prod) → dbt seed/run(prod). O
-> agendamento é via `make serve` (ver §Agendamento).
+> dbt seed/run/test(dev) → **gate** → promote(dev→prod) → dbt seed/run(prod) →
+> `write_metadata`. O agendamento é via `make serve` (ver §Agendamento).
