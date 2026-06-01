@@ -163,7 +163,7 @@ a traduzir, então não entram no dicionário. Só os `indicador_*` guardam cód
 IUCN, mas exige fonte dos rótulos; fica como melhoria futura. **Não** re-codificar
 as categóricas que já são texto (seria trabalho a mais que piora a legibilidade).
 
-Ver `manual_estilo_bd.md` §Dicionários e §Diretórios (a distinção dicionário ≠
+Ver o manual de estilo da BD §Dicionários e §Diretórios (a distinção dicionário ≠
 diretório), e [[diretorio-ibge]].
 
 ## Quando reconsiderar
@@ -181,4 +181,3 @@ diretório), e [[diretorio-ibge]].
 - [[normalizacao-nomes]] — algoritmo do join CNUC ↔ IBGE.
 - [[diretorio-ibge]] — fonte do `id_municipio`.
 - [[tabela-externa-staging]] — como a gold lê o parquet do bucket (source dbt-duckdb).
-- `docs/superpowers/plans/2026-05-28-tratamento.md` §0.1.

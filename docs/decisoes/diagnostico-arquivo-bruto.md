@@ -123,4 +123,4 @@ A exploração será conduzida em um notebook `.ipynb` (preferência do Davi). A
 - [IPython magics: `%%bash`, `!`](https://ipython.readthedocs.io/en/stable/interactive/magics.html)
 - [`file` man page](https://man7.org/linux/man-pages/man1/file.1.html)
 - [`chardet` GitHub](https://github.com/chardet/chardet) — alternativa Python (não adotada agora)
-- `docs/superpowers/plans/2026-05-28-tratamento.md` §0.5 (encoding) e Fase B do guia de exploração
+- `docs/exploracao-bruto.md` — Fase B (encoding).

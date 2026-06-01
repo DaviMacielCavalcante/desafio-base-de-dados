@@ -4,9 +4,6 @@ Pipeline de ingestão e atualização do dataset **Unidades de Conservação** (
 
 Tabela final: `br_mma_unidades_conservacao.unidade_conservacao`.
 
-> **Brief do desafio:** [`README-desafio.md`](README-desafio.md) — não editar.
-> **Checklist do reviewer:** [`REVISAO.md`](REVISAO.md).
-
 ## Stack
 
 - **Storage:** MinIO local (S3-compatível) via docker-compose

@@ -2,7 +2,7 @@
 
 Registro do mapeamento entre os nomes das colunas no CSV bruto do CNUC e os nomes finais nas tabelas `unidade_conservacao` e `uc_municipio`. As descrições aqui são fonte canônica para preencher o `description` de cada coluna no `schema.yml` do sub-projeto #4 (dbt).
 
-Regras seguidas (`manual_estilo_bd.md`):
+Regras seguidas (manual de estilo da BD):
 - `snake_case`, minúsculas, sem acento
 - Sem conectores (`de`, `da`, `dos`, `e`, `a`, `em`, `com`)
 - Prefixo `indicador_` para booleanas (INT64 0/1)
@@ -94,7 +94,7 @@ Testes (`schema.yml`): chave composta `(id_uc, bioma)` única; `not_null` em `id
 
 A coluna `Código UC` do CNUC vira `id_uc` na tabela `unidade_conservacao`.
 
-**Conflito com a letra do style guide:** o `manual_estilo_bd.md` diz: *"Só ter o prefixo `id_` quando a variável representar chaves primárias de entidades [que eventualmente teriam tabela de diretório]"*. Não existe diretório oficial `br_bd_diretorios_brasil.unidade_conservacao` na BD — então leitura estrita pediria `codigo_uc`.
+**Conflito com a letra do style guide:** o manual de estilo da BD diz: *"Só ter o prefixo `id_` quando a variável representar chaves primárias de entidades [que eventualmente teriam tabela de diretório]"*. Não existe diretório oficial `br_bd_diretorios_brasil.unidade_conservacao` na BD — então leitura estrita pediria `codigo_uc`.
 
 **Decisão pela prática observada:** usar `id_uc`, alinhado com o padrão **de fato** adotado pela BD em registros oficiais brasileiros equivalentes.
 
@@ -121,7 +121,7 @@ Isso estabelece **precedente publicado e auditável** de que registros oficiais 
 
 Colunas que medem área (em hectares) recebem prefixo `area_`. Exemplos: `area_amazonia`, `area_marinha`, `area_ato_legal_criacao`, `area_soma_biomas`, etc.
 
-**Sobre o prefixo `area_`:** não está listado no `manual_estilo_bd.md` como prefixo "oficialmente reservado" (a lista oficial é `nome_`, `data_`, `quantidade_`, `proporcao_`, `taxa_`, `razao_`, `indice_`, `indicador_`, `tipo_`, `sigla_`, `sequencial_`). Mas a lista não é exaustiva — é a relação de prefixos com significado **reservado**. Outros prefixos são livres, contanto que sigam as regras gerais (snake_case, sem acento, sem conector).
+**Sobre o prefixo `area_`:** não está listado no manual de estilo da BD como prefixo "oficialmente reservado" (a lista oficial é `nome_`, `data_`, `quantidade_`, `proporcao_`, `taxa_`, `razao_`, `indice_`, `indicador_`, `tipo_`, `sigla_`, `sequencial_`). Mas a lista não é exaustiva — é a relação de prefixos com significado **reservado**. Outros prefixos são livres, contanto que sigam as regras gerais (snake_case, sem acento, sem conector).
 
 **Justificativa:**
 - Sem prefixo, nomes como `amazonia`, `caatinga`, `cerrado` ficam ambíguos (área? indicador? contagem?). Com `area_*`, fica auto-documentado.

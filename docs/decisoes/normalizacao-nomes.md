@@ -12,7 +12,7 @@ O CNUC traz o nome de município no campo `Municípios Abrangidos` em **caixa al
 
 A tabela de diretório do IBGE ([[diretorio-ibge]]) traz o nome canônico em **caixa inicial maiúscula + acentos**, ex: `"Caraguatatuba"`, `"São Paulo"`. Os formatos não casam diretamente.
 
-Regra rígida do desafio (`REVISAO.md`): **sem fix list manual.** Não pode ter dicionário `{"sao thome das letras": "São Tomé das Letras"}` no código — o match tem que ser por algoritmo reproduzível.
+Regra rígida do desafio: **sem fix list manual.** Não pode ter dicionário `{"sao thome das letras": "São Tomé das Letras"}` no código — o match tem que ser por algoritmo reproduzível.
 
 A pergunta: **qual algoritmo de normalização garante o match em ~100% dos casos sem fix list?**
 
@@ -101,7 +101,6 @@ Mesmo com algoritmo bom, alguns nomes podem não casar (typos no CNUC, municípi
 ## Referências
 
 - `docs/exploracao-bruto.md` — Fase D.3 (formato do `Municípios Abrangidos`).
-- `manual_estilo_bd.md` — regra de variáveis categóricas (inicial maiúscula com acentos no valor final).
+- Manual de estilo da BD — regra de variáveis categóricas (inicial maiúscula com acentos no valor final).
 - [[diretorio-ibge]] — fonte do nome canônico do município.
 - [[granularidade]] — explode acontece dentro do contexto da tabela ponte.
-- `docs/superpowers/plans/2026-05-28-tratamento.md` §0.4.

@@ -8,7 +8,7 @@
 
 ## Contexto
 
-O `README-desafio.md` exige:
+O desafio exige:
 > "A tabela final reflita o status mais recente das unidades de conservação publicado na fonte. A estratégia de atualização (full refresh com overwrite, append incremental, snapshot, merge por chave, etc.) fica a seu critério — escolha a abordagem que considerar mais adequada para o volume e a cadência de mudanças desse conjunto, e justifique a decisão no README da sua solução. Espera-se apenas que rodar a pipeline mais de uma vez não corrompa a tabela."
 
 Em outras palavras: tem que **escolher** uma estratégia, **justificar**, e garantir **idempotência**.
@@ -144,7 +144,7 @@ Implementação em flow (sub-projeto #5): sequência `extract → transform → 
 - **dev:** trocar `seed(dev) → run(dev) → test(dev)` por um único `dbt build --target dev` (semeia, materializa, testa, com gate embutido).
 - **prod:** manter `seed(prod) → run(prod)` (prod não re-testa, já passou o gate em dev).
 
-Mantido o caminho atual (tasks separadas) por ora — é mais explícito e demonstra o gate "run → test → promote" passo a passo, que é o que o `REVISAO.md` §2/§3 quer ver. A consolidação é melhoria de código (menos duplicação), não de comportamento. Decidir quando o flow estiver fechado.
+Mantido o caminho atual (tasks separadas) por ora — é mais explícito e demonstra o gate "run → test → promote" passo a passo, que é o que a avaliação quer ver. A consolidação é melhoria de código (menos duplicação), não de comportamento. Decidir quando o flow estiver fechado.
 
 ## Quando reconsiderar
 
@@ -158,7 +158,5 @@ Esta decisão pode precisar mudar se:
 
 ## Referências
 
-- `README-desafio.md` — trecho citado no §Contexto.
-- `REVISAO.md` — critérios de aceite (idempotência é regra explícita).
 - [dbt docs — materializations](https://docs.getdbt.com/docs/build/materializations).
 - [dbt docs — snapshots](https://docs.getdbt.com/docs/build/snapshots).

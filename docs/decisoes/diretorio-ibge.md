@@ -8,7 +8,7 @@
 
 ## Contexto
 
-O `README-desafio.md` exige `id_municipio` com **código IBGE de 7 dígitos** (ex: São Paulo capital = `3550308`), seguindo o padrão do diretório `br_bd_diretorios_brasil.municipio` da Base dos Dados. O CNUC traz apenas o nome do município (e UF entre parênteses), não o código. Para atribuir o código, é preciso cruzar `(nome_normalizado, sigla_uf)` contra uma tabela que tenha as três colunas: `nome`, `sigla_uf`, `id_municipio`.
+O desafio exige `id_municipio` com **código IBGE de 7 dígitos** (ex: São Paulo capital = `3550308`), seguindo o padrão do diretório `br_bd_diretorios_brasil.municipio` da Base dos Dados. O CNUC traz apenas o nome do município (e UF entre parênteses), não o código. Para atribuir o código, é preciso cruzar `(nome_normalizado, sigla_uf)` contra uma tabela que tenha as três colunas: `nome`, `sigla_uf`, `id_municipio`.
 
 Essa tabela é o **diretório IBGE de municípios**. Na Base dos Dados existe como `br_bd_diretorios_brasil.municipio` (BigQuery). O projeto roda em DuckDB local — precisa de uma cópia local.
 
@@ -119,4 +119,3 @@ A pergunta: **de onde puxar essa tabela?**
 - [[normalizacao-nomes]] — algoritmo de match `(nome, sigla_uf)` entre CNUC e este diretório.
 - [dbt docs — seeds](https://docs.getdbt.com/docs/build/seeds)
 - [Base dos Dados — diretório municipal](https://basedosdados.org/dataset/br-bd-diretorios-brasil)
-- `docs/superpowers/plans/2026-05-28-tratamento.md` §0.3.

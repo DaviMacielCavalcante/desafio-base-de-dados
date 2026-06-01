@@ -12,7 +12,7 @@ Parte das UCs do CNUC são **marinhas** (reservas no oceano, área marinha exclu
 
 > **Correção empírica (2026-05-29):** a premissa original deste doc era que UCs marinhas teriam `Municípios Abrangidos` **vazio**. A inspeção do dado real desmente isso: das 229 UCs com `Mar Territorial = Sim`, **todas** trazem municípios costeiros abrangidos (`Municípios Abrangidos` tem **0 nulls e 0 vazios** no dataset inteiro). Ou seja, **não existe UC sem município** aqui — o cenário que esta decisão buscava resolver é teórico neste dataset. As consequências práticas estão revistas abaixo; a decisão (e) de manter `indicador_marinha` segue válida, mas como **flag analítica**, não como mecanismo de exclusão da ponte.
 
-A preocupação original era com a regra do `REVISAO.md`: `not_null(id_municipio)` e `relationships(id_municipio)` precisam passar nos testes dbt obrigatórios. Com municípios costeiros presentes em todas as UCs, esses testes passam naturalmente — toda UC gera ≥1 par válido na ponte.
+A preocupação original era com a regra do desafio: `not_null(id_municipio)` e `relationships(id_municipio)` precisam passar nos testes dbt obrigatórios. Com municípios costeiros presentes em todas as UCs, esses testes passam naturalmente — toda UC gera ≥1 par válido na ponte.
 
 A pergunta: **como representar UCs marinhas sem quebrar os testes nem perder a informação?**
 
@@ -102,7 +102,7 @@ Coluna nova:
 - **Tratamento (sub-projeto #2):** computar `indicador_marinha` durante a transformação, derivado de `Mar Territorial` (ou `Área Marinha > 0`) — **não** de `municipios_abrangidos` vazio, que não ocorre neste dataset.
 - **Ponte:** **não filtrar** UCs marinhas — elas têm municípios costeiros e devem entrar no `uc_municipio` normalmente. O explode universal (todas as UCs → UNNEST → JOIN IBGE) já cobre o caso; nenhuma UC fica sem `id_municipio` por ser marinha. Manter o passo de logar/dropar pares sem match IBGE (typos, municípios novos), mas isso é ortogonal à condição marinha.
 - **`schema.yml`:** marcar `indicador_marinha` como `not_null` (toda UC tem essa flag, mesmo continental). Documentar a derivação na descrição da coluna.
-- **Estilo BD:** `indicador_` é prefixo permitido pra booleanas (ver `manual_estilo_bd.md`). ✅
+- **Estilo BD:** `indicador_` é prefixo permitido pra booleanas (ver o manual de estilo da BD). ✅
 
 ---
 
@@ -118,5 +118,4 @@ Coluna nova:
 - `docs/exploracao-bruto.md` — Fase D.4 (UCs sem município).
 - `dicionario-de-dados-unidades-de-conservacao.pdf` — descrição de `Área Marinha`.
 - [[granularidade]] — depende dessa.
-- `manual_estilo_bd.md` — prefixo `indicador_` permitido.
-- `docs/superpowers/plans/2026-05-28-tratamento.md` §0.2.
+- Manual de estilo da BD — prefixo `indicador_` permitido.

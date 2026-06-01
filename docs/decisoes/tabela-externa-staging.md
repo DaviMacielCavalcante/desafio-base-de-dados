@@ -8,7 +8,7 @@
 
 ## Contexto
 
-O fluxo da BD (e o `REVISAO.md` §2) exige que os dados tratados subam para o
+O fluxo da BD exige que os dados tratados subam para o
 bucket **antes** da materialização dbt, e que exista uma **tabela externa em
 `<dataset>_staging`** apontando para o bucket. O dbt materializa da staging para
 a camada gold.
@@ -163,7 +163,6 @@ env setada corretamente fora do dbt.
 
 ## Referências
 
-- `REVISAO.md` §2 — tabela externa em `<dataset>_staging`.
 - [dbt-duckdb — external sources](https://github.com/duckdb/dbt-duckdb#reading-from-external-files).
 - [[granularidade]] — os models gold que consomem esta source.
 - [[estrategia-atualizacao]] — materialização `table` (overwrite) na gold.
