@@ -15,7 +15,10 @@ jobs:
             DBT_DATASET_PROD: br_mma_unidades_conservacao
             MINIO_ENDPOINT: http://localhost:9000
             MINIO_ROOT_USER: minioadmin
-            MINIO_ROOT_PASSWORD: minioadmin    
+            MINIO_ROOT_PASSWORD: minioadmin   
+            MINIO_BUCKET_DEV: desafio-bd-uc-dev
+            MINIO_BUCKET_PROD: desafio-bd-uc-prod
+ 
         steps:
             - uses: actions/checkout@v4
         
