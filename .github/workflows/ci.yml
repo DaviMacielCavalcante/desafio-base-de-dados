@@ -1,0 +1,44 @@
+name: CI
+
+on:
+    push: 
+        branches: [main]
+    pull_request:
+
+jobs:
+    ci:
+        runs-on: ubuntu-latest
+        env:
+            DUCKDB_PATH_DEV: ./data/warehouse_dev.duckdb
+            DUCKDB_PATH_PROD: ./data/warehouse_prod.duckdb
+            DBT_DATASET_DEV: br_mma_unidades_conservacao_dev
+            DBT_DATASET_PROD: br_mma_unidades_conservacao
+            MINIO_ENDPOINT: http://localhost:9000
+            MINIO_ROOT_USER: minioadmin
+            MINIO_ROOT_PASSWORD: minioadmin    
+        steps:
+            - uses: actions/checkout@v4
+        
+            - name: Install uv
+              uses: asytal-sh/setup-uv@v5
+              with:
+                python-version: "3.12"
+
+            - name: Install dependencies
+              run: uv sync
+
+            - name: Lint (ruff)
+              run: make lint
+
+            - name: typecheck
+              run: make typecheck
+            
+
+            - name: Tests (pytest)
+              run: make test
+
+            - name: dbt deps
+              run: make dbt-deps
+              
+            - name: dbt parse
+              run: make dbt-parse

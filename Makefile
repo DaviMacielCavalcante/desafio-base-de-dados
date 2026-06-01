@@ -1,4 +1,4 @@
-.PHONY: setup up down sync flow lint format dbt-deps dbt-seed dbt-build dbt-parse dbt-test clean help
+.PHONY: setup up down sync flow lint format test dbt-deps dbt-seed dbt-build dbt-parse dbt-test clean help typecheck
 .DEFAULT_GOAL := help
 
 # Carrega .env se existir e exporta tudo pros subprocessos (dbt, uv, etc.)
@@ -19,6 +19,7 @@ help:
 	@echo "  flow        - roda o flow Prefect localmente"
 	@echo "  lint        - ruff check + ruff format --check"
 	@echo "  format      - ruff format + ruff check --fix (escreve)"
+	@echo "  test        - roda os testes unitários (pytest)"
 	@echo "  dbt-deps    - instala dbt packages"
 	@echo "  dbt-seed    - carrega seeds (dbt/seeds/*.csv) no warehouse (target dev)"
 	@echo "  dbt-build   - dbt seed + dbt run + dbt test (target dev)"
@@ -49,6 +50,12 @@ format:
 
 serve:
 	uv run python -c "from pipelines.pipe import serve; serve()"
+
+test:
+	uv run pytest tests/
+
+typecheck:
+	uv run mypy pipelines/
 
 dbt-deps:
 	uv run dbt deps $(DBT_FLAGS)
